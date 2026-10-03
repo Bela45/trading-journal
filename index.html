@@ -35,6 +35,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .tag.hi{color:var(--loss);border-color:var(--loss)}
 .card img{max-width:100%;border-radius:8px;margin-top:8px;cursor:zoom-in;display:block}
 .muted{color:var(--mute)}
+.acc{display:flex;gap:8px;align-items:center}.acc small{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 [hidden]{display:none!important}
 .cam{position:absolute;bottom:3px;right:3px;font-size:10px;font-style:normal;line-height:1}
 .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px}
@@ -53,7 +54,7 @@ a{color:var(--acc)}.links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .links a{border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;background:var(--card)}
 .note{font-size:13px;color:var(--mute);background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:8px 0}
 </style></head><body><main>
-<div class="bar"><h1>Trading Journal</h1><button id="theme" aria-label="Toggle theme">Theme</button></div>
+<div class="bar"><h1>Trading Journal</h1><span class="acc"><span id="acct"></span><button id="theme" aria-label="Toggle theme">Theme</button></span></div>
 <div id="view"></div></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
@@ -85,14 +86,14 @@ function loc(utc){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{ti
 function tzName(){return new Intl.DateTimeFormat('en',{timeZone:S.tz,timeZoneName:'short'}).format(new Date()).split(' ').pop()}
 function evs(){return S.events.map(e=>e.utc?{...e,...loc(e.utc)}:e)}
 function tzOpts(sel){const l=TZS.some(z=>z[0]===sel)?TZS:[[sel,sel],...TZS];return l.map(([v,n])=>`<option value="${v}" ${v===sel?'selected':''}>${n}</option>`).join('')}
-function save(){clearTimeout(pt);pt=setTimeout(push,1500);try{localStorage.setItem('tj1',JSON.stringify(S));warn=''}catch(e){warn='Storage is full. Delete old screenshots to keep saving.'}}
+function save(){dirty=true;clearTimeout(pt);pt=setTimeout(push,1500);try{localStorage.setItem('tj1',JSON.stringify(S));warn=''}catch(e){warn='Storage is full. Delete old screenshots to keep saving.'}}
 const money=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(2);
 const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){
   $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
@@ -168,15 +169,16 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-si],[data-su],[data-so]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-login],[data-su],[data-so]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d)sel=D.d;
   else if(D.m)cur=new Date(cur.getFullYear(),cur.getMonth()+ +D.m,1);
   else if(D.mt5)return importMT5();
-  else if(D.si||D.su)return auth(!!D.su);
-  else if(D.so)return sb.auth.signOut().then(()=>{user=null;sync='';render()});
+  else if(D.login)return openLogin();
+  else if(D.su){if(!$('#lf').reportValidity())return;return auth(true,$('#em').value.trim(),$('#pw').value)}
+  else if(D.so)return signOut();
   else if(D.shot)return addShots();
   else if(D.delshot){S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
   else if(D.add)return openTrade();
@@ -222,34 +224,63 @@ function importMT5(){const i=document.createElement('input');i.type='file';i.acc
   }catch(x){warn='Could not read that file.'}render()};i.click()}
 document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.value;save();render()}if(e.target.id==='bal'){S.bal=Math.max(0,+e.target.value||0);save();render()}});
 const SB_URL='https://fbmtvcdgdrfmpgstgtns.supabase.co',SB_KEY='sb_publishable_V069cMMupLfikudhqr8PEw_2VToLMte';
-let sb=null,user=null,sync='',pt;
+let sb=null,user=null,sync='',pt,busy=false,again=false,dirty=false;
 try{sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
-function syncCard(){
-  if(!sb)return '<div class="note">Cloud sync is unavailable: the Supabase library did not load. Check your connection.</div>';
-  if(user)return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${esc(user.email)} · ${esc(sync||'Synced')}</div><div class="links"><button data-so="1">Sign out</button></div></div>`;
-  return `<div class="card"><b>Cloud sync</b><label>Email<input id="em" type="email" autocomplete="email"></label><label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6"></label><div class="links"><button class="p" data-si="1">Sign in</button><button data-su="1">Create account</button></div><p class="muted" id="syncst">${esc(sync)}</p></div>`}
-function status(m){sync=m;const e=$('#syncst');if(e)e.textContent=(user?user.email+' · ':'')+m}
-async function push(){if(!sb||!user)return;status('Saving…');const{error}=await sb.from('journal').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()});status(error?'Sync failed: '+error.message:'Synced')}
+function syncCard(){return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${!sb?'The sync library did not load. Check your connection.':user?esc(user.email)+' · '+esc(sync||'Saved'):'Not signed in. Your data is only on this device.'}</div><div class="links">${user?'<button data-so="1">Sign out</button>':sb?'<button class="p" data-login="1">Sign in</button>':''}</div></div>`}
+function paintAcct(){const a=$('#acct');if(!a)return;a.innerHTML=!sb?'':user?`<small class="muted" id="hst">${esc(sync||'Saved')}</small><button data-so="1">Sign out</button>`:'<button class="p" data-login="1">Sign in</button>'}
+function status(m){sync=m;const e=$('#syncst');if(e)e.textContent=(user?user.email+' · ':'')+m;const h=$('#hst');if(h)h.textContent=m}
+async function push(){
+  clearTimeout(pt);if(!sb||!user)return;
+  if(busy){again=true;return}
+  busy=true;status('Saving…');
+  let error;try{({error}=await sb.from('journal').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()}))}catch(x){error={message:'offline'}}
+  busy=false;
+  if(error){status('Not saved: '+error.message);return}
+  dirty=false;status('Saved');
+  if(again){again=false;push()}
+}
 async function pull(merge){
   const{data,error}=await sb.from('journal').select('data').eq('user_id',user.id).maybeSingle();
-  if(error){status('Sync failed: '+error.message);return}
-  if(data&&data.data&&Object.keys(data.data).length){
-    const c=data.data,u=(a,b)=>[...new Map([...(a||[]),...(b||[])].map(x=>[x.id,x])).values()];
-    S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal}:c;
+  if(error){status('Could not load: '+error.message);return}
+  const c=data&&data.data;
+  if(c&&Object.keys(c).length){
+    const u=(a,b)=>[...new Map([...(a||[]),...(b||[])].map(x=>[x.id,x])).values()];
+    S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal,tz:c.tz||S.tz,seeded:1,seedv:Math.max(c.seedv||0,S.seedv||0)}:c;
     S.shots=S.shots||[];S.trades=S.trades||[];S.events=S.events||[];S.tz=S.tz||'UTC';
     try{localStorage.setItem('tj1',JSON.stringify(S))}catch(e){}
-    if(merge)await push();else status('Synced')
+    if(merge)await push();else status('Loaded')
   }else await push();
 }
-async function auth(up){
-  const email=$('#em').value.trim(),password=$('#pw').value;
-  const r=up?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
-  if(r.error)sync=r.error.message;
-  else if(r.data.session){user=r.data.user;await pull(true)}
-  else sync='Check your email to confirm your account, then sign in.';
-  render();
+function openLogin(){
+  const d=$('#dlg');
+  d.innerHTML=`<form id="lf"><b>Sign in to sync your journal</b>
+  <label>Email<input id="em" type="email" autocomplete="email" required></label>
+  <label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6" required></label>
+  <p id="lerr" class="loss" role="alert"></p>
+  <div class="row"><button type="button" data-close="1">Cancel</button><span><button type="button" data-su="1">Create account</button> <button class="p" type="submit">Sign in</button></span></div></form>`;
+  d.showModal();
+  $('#lf').onsubmit=e=>{e.preventDefault();auth(false,$('#em').value.trim(),$('#pw').value)};
 }
-if(sb)sb.auth.getSession().then(async({data})=>{if(data.session){user=data.session.user;await pull(false);render()}});
+async function auth(up,email,password){
+  const err=m=>{const e=$('#lerr');if(e)e.textContent=m};
+  err('Working…');
+  let r;try{r=up?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password})}catch(x){return err('Network error. Check your connection.')}
+  if(r.error)return err(r.error.message);
+  if(!r.data.session)return err('Account created. Check your email to confirm it, then sign in.');
+  user=r.data.user;$('#dlg').close();status('Syncing…');await pull(true);render();
+}
+async function signOut(){
+  if(dirty)await push();
+  try{await sb.auth.signOut()}catch(e){}
+  user=null;sync='';S={trades:[],events:[],shots:[]};try{localStorage.removeItem('tj1')}catch(e){}
+  load();render();
+}
+if(sb){
+  sb.auth.getSession().then(async({data})=>{if(data.session){user=data.session.user;status('Loading…');await pull(false);render()}});
+  sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'&&user){user=null;paintAcct()}});
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push()});
+addEventListener('pagehide',()=>{if(dirty)push()});
 $('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
 load();render();
 </script></body></html>
