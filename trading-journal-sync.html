@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trading Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#eef1f5;--card:#fff;--ink:#14213d;--mute:#6b7690;--line:#dde2ea;--win:#0f9d7a;--winbg:#d8f3ea;--loss:#d6455d;--lossbg:#fbe0e5;--acc:#2b50d9}
+:root[data-theme=dark]{--bg:#0e1424;--card:#172038;--ink:#e8ecf6;--mute:#8f9bb8;--line:#27324f;--win:#3ddbb0;--winbg:#12382f;--loss:#ff7088;--lossbg:#42202b;--acc:#7a95ff}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1424;--card:#172038;--ink:#e8ecf6;--mute:#8f9bb8;--line:#27324f;--win:#3ddbb0;--winbg:#12382f;--loss:#ff7088;--lossbg:#42202b;--acc:#7a95ff}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 'IBM Plex Sans',system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:12px 12px 90px}
+h1{font-size:20px;margin:6px 0 12px;font-weight:600}
+h2{font-size:15px;margin:16px 0 8px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat small{color:var(--mute);display:block;font-size:12px}.stat b{font-size:18px}
+.win{color:var(--win)}.loss{color:var(--loss)}
+.bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+button,select,input,textarea{font:inherit;color:var(--ink)}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:40px}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;color:var(--mute);font-size:12px;padding:2px 0}
+.day{position:relative;min-height:58px;border-radius:8px;border:1px solid var(--line);background:var(--card);padding:4px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font-size:12px}
+.day.w{background:var(--winbg);border-color:var(--win)}.day.l{background:var(--lossbg);border-color:var(--loss)}
+.day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
+.day.empty{visibility:hidden}.day .pn{font-weight:600;font-size:11px;word-break:break-all}
+.dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--loss);box-shadow:0 0 0 2px var(--card)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.tag.hi{color:var(--loss);border-color:var(--loss)}
+.card img{max-width:100%;border-radius:8px;margin-top:8px;cursor:zoom-in;display:block}
+.muted{color:var(--mute)}
+[hidden]{display:none!important}
+.cam{position:absolute;bottom:3px;right:3px;font-size:10px;font-style:normal;line-height:1}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px}
+.shot{position:relative}.shot img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block}
+.shot button{position:absolute;top:4px;right:4px;min-height:28px;padding:2px 8px;background:var(--card)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
+nav button.on{color:var(--acc);font-weight:600;box-shadow:inset 0 2px var(--acc)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+label{display:block;font-size:13px;color:var(--mute);margin-top:10px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:40px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chips button{padding:4px 10px;min-height:32px;font-size:13px}.chips button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+a{color:var(--acc)}.links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.links a{border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;background:var(--card)}
+.note{font-size:13px;color:var(--mute);background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:8px 0}
+</style></head><body><main>
+<div class="bar"><h1>Trading Journal</h1><button id="theme" aria-label="Toggle theme">Theme</button></div>
+<div id="view"></div></main>
+<nav id="nav"></nav>
+<dialog id="dlg"></dialog>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const MAJ=['USD','EUR','GBP','JPY','AUD','CAD','CHF','NZD'];
+const PAIRS=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF','NZDUSD','EURJPY','GBPJPY','XAUUSD','XAGUSD','US30','NAS100','SPX500','US02Y','US05Y','US10Y','US30Y'];
+const TVS={XAUUSD:'OANDA:XAUUSD',XAGUSD:'OANDA:XAGUSD',US30:'OANDA:US30USD',NAS100:'OANDA:NAS100USD',SPX500:'OANDA:SPX500USD',US02Y:'TVC:US02Y',US05Y:'TVC:US05Y',US10Y:'TVC:US10Y',US30Y:'TVC:US30Y'};
+const LBL={XAUUSD:'XAUUSD Gold',XAGUSD:'XAGUSD Silver',US30:'US30 Dow',US02Y:'US 2Y',US05Y:'US 5Y',US10Y:'US 10Y',US30Y:'US 30Y'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S={trades:[],events:[],shots:[]},tab='cal',cur=new Date(),sel=iso(new Date()),fc=new Set(MAJ),chartSym='EURUSD',warn='';
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function load(){try{const v=localStorage.getItem('tj1');if(v)S=JSON.parse(v)}catch(e){}S.shots=S.shots||[];S.trades=S.trades||[];S.events=S.events||[];
+  try{S.tz=S.tz||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';new Intl.DateTimeFormat('en',{timeZone:S.tz})}catch(e){S.tz='UTC'}
+  if((S.seedv||0)<2){const first=!S.seeded;S.seeded=1;S.seedv=2;
+    const E=(id,date,time,cur,title,utc)=>Object.assign({id,date,time,cur,title},utc?{utc}:{});
+    S.events.push(...(first?[E('s1','2026-10-02','08:30','USD','Non-Farm Payrolls','2026-10-02T12:30:00.000Z'),E('s2','2026-10-07','14:00','USD','FOMC Meeting Minutes','2026-10-07T18:00:00.000Z')]:[]),
+      E('s3','2026-10-28','','NZD','RBNZ Rate Decision','2026-10-28T01:00:00.000Z'),
+      E('s4','2026-10-28','','USD','FOMC Rate Decision','2026-10-28T18:00:00.000Z'),
+      E('s5','2026-10-30','','JPY','BoJ Rate Decision'),
+      E('s6','2026-11-03','','AUD','RBA Rate Decision','2026-11-03T03:30:00.000Z'),
+      E('s7','2026-11-05','','GBP','BoE Rate Decision (MPC)','2026-11-05T12:00:00.000Z'),
+      E('s8','2026-12-10','','CHF','SNB Rate Decision','2026-12-10T08:30:00.000Z'));save()}}
+const TZS=[['America/New_York','New York'],['America/Chicago','Chicago'],['America/Los_Angeles','Los Angeles'],['UTC','UTC'],['Europe/London','London'],['Europe/Berlin','Frankfurt / Paris'],['Europe/Zurich','Zurich'],['Africa/Lagos','Lagos'],['Africa/Johannesburg','Johannesburg'],['Asia/Dubai','Dubai'],['Asia/Kolkata','India'],['Asia/Singapore','Singapore'],['Asia/Hong_Kong','Hong Kong'],['Asia/Tokyo','Tokyo'],['Australia/Sydney','Sydney'],['Pacific/Auckland','Auckland']];
+function tzOff(ms,tz){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(ms).map(x=>[x.type,x.value]));return Date.UTC(+p.year,p.month-1,+p.day,+p.hour,+p.minute,+p.second)-ms}
+function toUTC(date,time,tz){const[y,m,d]=date.split('-').map(Number),[h,mi]=time.split(':').map(Number),g=Date.UTC(y,m-1,d,h,mi);let t=g-tzOff(g,tz);t=g-tzOff(t,tz);return new Date(t).toISOString()}
+function loc(utc){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:S.tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(Date.parse(utc)).map(x=>[x.type,x.value]));return{date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`}}
+function tzName(){return new Intl.DateTimeFormat('en',{timeZone:S.tz,timeZoneName:'short'}).format(new Date()).split(' ').pop()}
+function evs(){return S.events.map(e=>e.utc?{...e,...loc(e.utc)}:e)}
+function tzOpts(sel){const l=TZS.some(z=>z[0]===sel)?TZS:[[sel,sel],...TZS];return l.map(([v,n])=>`<option value="${v}" ${v===sel?'selected':''}>${n}</option>`).join('')}
+function save(){clearTimeout(pt);pt=setTimeout(push,1500);try{localStorage.setItem('tj1',JSON.stringify(S));warn=''}catch(e){warn='Storage is full. Delete old screenshots to keep saving.'}}
+const money=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(2);
+const cls=n=>n>0?'win':n<0?'loss':'';
+const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
+
+function render(){
+  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}</button>`).join('');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');
+}
+const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
+function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
+  const c=(a,b,k='')=>`<div class="stat"><small>${a}</small><b class="${k}">${b}</b></div>`;
+  return `<div class="stats">${c('Net P&amp;L',money(p),cls(p))}${S.bal?c('Account return',pc(p/S.bal*100,2),cls(p)):''}${c('Win rate',n?(w/n*100).toFixed(0)+'%':'0%','win')}${c('Loss rate',n?(l/n*100).toFixed(0)+'%':'0%','loss')}${c('Trades',n)}</div>`}
+function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1">`:''}<div class="row" style="margin-top:8px"><span></span><button data-del="${t.id}">Delete</button></div></div>`}
+function evCard(e){return `<div class="card row"><div><span class="tag hi">High</span> <b>${e.cur}</b> ${esc(e.title)}<div class="muted">${e.date} ${e.time||''}${e.utc&&e.time?' '+tzName():''}</div></div><button data-dele="${e.id}" aria-label="Delete event">✕</button></div>`}
+
+function shotGrid(d){const l=S.shots.filter(s=>s.date===d);return l.length?`<div class="shots">${l.map(s=>`<div class="shot"><img src="${s.img}" alt="Screenshot for ${d}" data-z="1"><button data-delshot="${s.id}" aria-label="Delete screenshot">✕</button></div>`).join('')}</div>`:''}
+function addShots(){const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=true;i.onchange=async()=>{for(const f of i.files){const img=await shrink(f);if(img)S.shots.push({id:Date.now()+Math.random()+'',date:sel,img})}save();render()};i.click()}
+function vCal(){const E=evs();
+  const y=cur.getFullYear(),m=cur.getMonth(),first=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate();
+  const mk=y+'-'+String(m+1).padStart(2,'0');
+  const mt=S.trades.filter(t=>t.date.startsWith(mk));
+  let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="dow">${d}</div>`).join('')+'<div class="day empty"></div>'.repeat(first);
+  for(let d=1;d<=n;d++){
+    const k=mk+'-'+String(d).padStart(2,'0'),ts=S.trades.filter(t=>t.date===k),p=sum(ts),ev=E.some(e=>e.date===k);
+    cells+=`<button class="day ${ts.length?(p>=0?'w':'l'):''} ${k===sel?'sel':''} ${k===iso(new Date())?'today':''}" data-d="${k}"><b>${d}</b>${ts.length?`<span class="pn ${cls(p)}">${S.bal?pc(p/S.bal*100,2):money(p)}</span>`:'<span></span>'}${ev?'<i class="dot" title="High-impact news"></i>':''}${S.shots.some(s=>s.date===k)?'<i class="cam" title="Has screenshots">📷</i>':''}</button>`;
+  }
+  const dt=S.trades.filter(t=>t.date===sel),de=E.filter(e=>e.date===sel);
+  const td=loc(new Date().toISOString()).date,tE=E.filter(e=>e.date===td).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  return (tE.length?`<div class="card"><b>Today's high-impact news</b> <span class="muted">(${tzName()})</span>${tE.map(e=>`<div><span class="tag hi">${e.cur}</span> ${e.time||'All day'} ${esc(e.title)}</div>`).join('')}</div>`:'')+stats(mt)+`<div class="bar"><button data-m="-1" aria-label="Previous month">‹</button><b>${cur.toLocaleString('en',{month:'long',year:'numeric'})}</b><button data-m="1" aria-label="Next month">›</button></div><div class="grid">${cells}</div>
+  <div class="bar"><h2>${sel}</h2><span><button data-shot="1">📷 Screenshot</button> <button class="p" data-add="1">Add trade</button></span></div>
+  ${de.map(evCard).join('')}${shotGrid(sel)}${dt.map(tradeCard).join('')||'<p class="muted">No trades logged. Tap Add trade to log one for this day.</p>'}`;
+}
+function vJr(){const l=[...S.trades].sort((a,b)=>b.date.localeCompare(a.date));return stats(S.trades)+syncCard()+`<div class="card"><label style="margin-top:0">Starting account balance (used for % win/loss)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 10000"></label>
+  <div class="links"><button data-mt5="1">Import MT5 history</button></div>
+  <p class="muted" style="margin:0;font-size:13px">In MT5: History tab → right-click → Report → HTML (or CSV), then import that file here. Duplicates are skipped.</p></div><div class="bar"><h2>All trades</h2><button class="p" data-add="1">Add trade</button></div>`+(l.map(tradeCard).join('')||'<p class="muted">Your journal is empty. Add your first trade.</p>')+`<div class="links"><button data-export="1">Export backup</button><button data-import="1">Import backup</button></div>`}
+function vCh(){
+  const tv=s=>`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TVS[s]||'FX:'+s)}`;
+  return `<h2>Charts</h2><div class="chips">${PAIRS.map(p=>`<button class="${p===chartSym?'on':''}" data-sym="${p}">${LBL[p]||p}</button>`).join('')}</div>
+  <div class="card"><b>${LBL[chartSym]||chartSym}</b><div class="links"><a href="${tv(chartSym)}" target="_blank" rel="noopener">Open in TradingView</a></div>
+  <p class="muted">Tip: on a chart, press the camera icon, copy the image link or save the snapshot, then attach it to a trade.</p></div>
+  <div class="note">Live TradingView charts can't be embedded inside this hosted page (its security rules block TradingView's script). The button opens the chart in a new tab or the TradingView app. For a fully embedded chart, run this file on your own site, where TradingView's free widget works.</div>`;
+}
+function vNw(){
+  const list=evs().filter(e=>fc.has(e.cur)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const up=list.filter(e=>e.date>=iso(new Date()));
+  return `<div class="bar"><h2>High-impact news</h2><button class="p" data-adde="1">Add event</button></div>
+  <div class="chips">${MAJ.map(c=>`<button class="${fc.has(c)?'on':''}" data-c="${c}">${c}</button>`).join('')}</div>
+  <label style="margin-top:0">Show times in<select id="tzSel">${tzOpts(S.tz)}</select></label><div class="links"><a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">Forex Factory</a><a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener">TradingView calendar</a><button data-nfp="1">Add this month's NFP</button></div>
+  <div class="note">This page can't pull live data from Forex Factory. Copy the red-folder events you trade around into this list. They appear as red dots on your calendar.</div>
+  ${up.map(evCard).join('')||'<p class="muted">No upcoming high-impact events saved. Add one from Forex Factory.</p>'}`;
+}
+
+function openTrade(){
+  $('#dlg').innerHTML=`<form method="dialog" id="tf"><b>New trade</b>
+  <label>Date<input type="date" name="date" value="${sel}" required></label>
+  <label>Instrument<select name="pair" id="pairSel">${[['Forex',PAIRS.slice(0,9)],['Metals',['XAUUSD','XAGUSD']],['Indices',['US30','NAS100','SPX500']],['Bonds (Treasury yields)',['US02Y','US05Y','US10Y','US30Y']]].map(([g,l])=>`<optgroup label="${g}">${l.map(p=>`<option value="${p}">${LBL[p]||p}`).join('')}</optgroup>`).join('')}<option value="OTHER">Other…</option></select></label>
+  <label id="otherLbl" hidden>Other instrument<input name="other" placeholder="e.g. GER40, USOIL"></label>
+  <label>Side<select name="side"><option>Long</option><option>Short</option></select></label>
+  <label>Result (P&amp;L, negative for a loss)<input type="number" step="any" name="pnl" required inputmode="decimal"></label>
+  <label>Notes<textarea name="notes" rows="3" placeholder="Setup, emotions, lesson"></textarea></label>
+  <label>Screenshot<input type="file" name="img" accept="image/*"></label>
+  <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save trade</button></div></form>`;
+  $('#dlg').showModal();
+  $('#pairSel').onchange=e=>{const o=e.target.value==='OTHER';$('#otherLbl').hidden=!o;$('#otherLbl input').required=o};
+  $('#tf').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),file=f.get('img');
+    const pr=f.get('pair')==='OTHER'?f.get('other').trim().toUpperCase():f.get('pair');
+    S.trades.push({id:Date.now()+'',date:f.get('date'),pair:pr,side:f.get('side'),pnl:+f.get('pnl'),notes:f.get('notes'),img:file&&file.size?await shrink(file):''});
+    sel=f.get('date');save();$('#dlg').close();render()};
+}
+function openEvent(){
+  $('#dlg').innerHTML=`<form method="dialog" id="ef"><b>New high-impact event</b>
+  <label>Date<input type="date" name="date" value="${sel}" required></label>
+  <label>Time<input type="time" name="time"></label><label>Time zone of that time<select name="tz">${tzOpts(S.tz)}</select></label>
+  <label>Currency<select name="cur">${MAJ.map(c=>`<option>${c}`).join('')}</select></label>
+  <label>Event<input name="title" placeholder="CPI y/y, Rate decision" required></label>
+  <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save event</button></div></form>`;
+  $('#dlg').showModal();
+  $('#ef').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);const tm=f.get('time'),ev={id:Date.now()+'',date:f.get('date'),time:tm,cur:f.get('cur'),title:f.get('title')};if(tm)ev.utc=toUTC(ev.date,tm,f.get('tz'));S.events.push(ev);save();$('#dlg').close();render()};
+}
+function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-si],[data-su],[data-so]'),img=e.target.closest('[data-z]');
+  if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
+  if(!t)return;const D=t.dataset;
+  if(D.t)tab=D.t;
+  else if(D.d)sel=D.d;
+  else if(D.m)cur=new Date(cur.getFullYear(),cur.getMonth()+ +D.m,1);
+  else if(D.mt5)return importMT5();
+  else if(D.si||D.su)return auth(!!D.su);
+  else if(D.so)return sb.auth.signOut().then(()=>{user=null;sync='';render()});
+  else if(D.shot)return addShots();
+  else if(D.delshot){S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
+  else if(D.add)return openTrade();
+  else if(D.adde)return openEvent();
+  else if(D.close)return $('#dlg').close();
+  else if(D.del){S.trades=S.trades.filter(x=>x.id!==D.del);save()}
+  else if(D.dele){S.events=S.events.filter(x=>x.id!==D.dele);save()}
+  else if(D.sym)chartSym=D.sym;
+  else if(D.c){fc.has(D.c)?fc.delete(D.c):fc.add(D.c)}
+  else if(D.nfp){const n=new Date(),d=new Date(n.getFullYear(),n.getMonth(),1);while(d.getDay()!==5)d.setDate(d.getDate()+1);S.events.push({id:Date.now()+'',date:iso(d),time:'08:30',cur:'USD',title:'Non-Farm Payrolls',utc:toUTC(iso(d),'08:30','America/New_York')});save()}
+  else if(D.export){const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(JSON.stringify(S));a.download='journal.json';a.click();return}
+  else if(D.import){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=async()=>{try{S=JSON.parse(await i.files[0].text());S.shots=S.shots||[];S.trades=S.trades||[];S.events=S.events||[];save();render()}catch(x){warn='That file is not a valid backup.';render()}};i.click();return}
+  render();
+});
+function num(s){s=String(s||'').replace(/[\s\u00a0]/g,'');if(s.includes(',')&&s.includes('.'))s=s.replace(/,/g,'');else s=s.replace(',','.');return parseFloat(s)||0}
+function rowsOf(buf){
+  const u=new Uint8Array(buf),t=new TextDecoder(u[0]===255&&u[1]===254?'utf-16le':'utf-8').decode(buf);
+  if(/<tr[\s>]/i.test(t))return [...new DOMParser().parseFromString(t,'text/html').querySelectorAll('tr')].map(r=>[...r.children].map(c=>c.textContent.trim()));
+  const d=t.includes('\t')?'\t':t.includes(';')?';':',';
+  return t.split(/\r?\n/).map(l=>l.split(d).map(c=>c.replace(/^"|"$/g,'').trim()));
+}
+function parseMT5(buf){
+  const rows=rowsOf(buf),L=r=>r.map(c=>c.toLowerCase());let h=-1;
+  for(let i=0;i<rows.length;i++){const l=L(rows[i]);if(l.includes('symbol')&&l.includes('profit')&&l.includes('type')){h=i;break}}
+  if(h<0)return null;
+  const H=L(rows[h]),ix=n=>H.indexOf(n),sy=ix('symbol'),ty=ix('type'),pr=ix('profit'),dir=ix('direction');
+  const tm=H.map((c,i)=>c==='time'?i:-1).filter(i=>i>=0),tI=tm[tm.length-1],id=['position','ticket','deal','order'].map(ix).find(i=>i>=0);
+  const ex=['commission','fee','swap'].map(ix).filter(i=>i>=0),out=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i],l=L(r);if(l.includes('symbol'))break;
+    const type=(r[ty]||'').toLowerCase();if(!r[sy]||(type!=='buy'&&type!=='sell'))continue;
+    if(dir>=0&&!(r[dir]||'').toLowerCase().includes('out'))continue;
+    const m=(r[tI]||'').match(/(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})/);if(!m)continue;
+    const date=`${m[1]}-${m[2]}-${m[3]}`,pnl=num(r[pr])+ex.reduce((a,j)=>a+num(r[j]),0);
+    out.push({id:'mt5-'+(id>=0?r[id]:'')+r[tI]+r[sy]+pnl,date,pair:r[sy].toUpperCase(),side:type==='buy'?'Long':'Short',pnl:Math.round(pnl*100)/100,notes:'Imported from MT5',img:''});
+  }
+  return out;
+}
+function importMT5(){const i=document.createElement('input');i.type='file';i.accept='.htm,.html,.csv,.txt';i.onchange=async()=>{
+  try{const r=parseMT5(await i.files[0].arrayBuffer());
+    if(!r||!r.length){warn='No closed trades found. Export the History tab as a Report (HTML or CSV) with Symbol, Type and Profit columns.'}
+    else{const have=new Set(S.trades.map(t=>t.id)),add=r.filter(t=>!have.has(t.id));S.trades.push(...add);save();warn='';alert(`Imported ${add.length} trades (${r.length-add.length} duplicates skipped).`)}
+  }catch(x){warn='Could not read that file.'}render()};i.click()}
+document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.value;save();render()}if(e.target.id==='bal'){S.bal=Math.max(0,+e.target.value||0);save();render()}});
+const SB_URL='https://fbmtvcdgdrfmpgstgtns.supabase.co',SB_KEY='sb_publishable_V069cMMupLfikudhqr8PEw_2VToLMte';
+let sb=null,user=null,sync='',pt;
+try{sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
+function syncCard(){
+  if(!sb)return '<div class="note">Cloud sync is unavailable: the Supabase library did not load. Check your connection.</div>';
+  if(user)return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${esc(user.email)} · ${esc(sync||'Synced')}</div><div class="links"><button data-so="1">Sign out</button></div></div>`;
+  return `<div class="card"><b>Cloud sync</b><label>Email<input id="em" type="email" autocomplete="email"></label><label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6"></label><div class="links"><button class="p" data-si="1">Sign in</button><button data-su="1">Create account</button></div><p class="muted" id="syncst">${esc(sync)}</p></div>`}
+function status(m){sync=m;const e=$('#syncst');if(e)e.textContent=(user?user.email+' · ':'')+m}
+async function push(){if(!sb||!user)return;status('Saving…');const{error}=await sb.from('journal').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()});status(error?'Sync failed: '+error.message:'Synced')}
+async function pull(merge){
+  const{data,error}=await sb.from('journal').select('data').eq('user_id',user.id).maybeSingle();
+  if(error){status('Sync failed: '+error.message);return}
+  if(data&&data.data&&Object.keys(data.data).length){
+    const c=data.data,u=(a,b)=>[...new Map([...(a||[]),...(b||[])].map(x=>[x.id,x])).values()];
+    S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal}:c;
+    S.shots=S.shots||[];S.trades=S.trades||[];S.events=S.events||[];S.tz=S.tz||'UTC';
+    try{localStorage.setItem('tj1',JSON.stringify(S))}catch(e){}
+    if(merge)await push();else status('Synced')
+  }else await push();
+}
+async function auth(up){
+  const email=$('#em').value.trim(),password=$('#pw').value;
+  const r=up?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
+  if(r.error)sync=r.error.message;
+  else if(r.data.session){user=r.data.user;await pull(true)}
+  else sync='Check your email to confirm your account, then sign in.';
+  render();
+}
+if(sb)sb.auth.getSession().then(async({data})=>{if(data.session){user=data.session.user;await pull(false);render()}});
+$('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
+load();render();
+</script></body></html>
