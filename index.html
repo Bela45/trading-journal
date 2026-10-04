@@ -46,7 +46,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .shot{position:relative}.shot img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block}
 .shot button{position:absolute;top:4px;right:4px;min-height:28px;padding:2px 8px;background:var(--card)}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
+nav button{padding:8px 2px;font-size:14px;flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
 nav button.on{color:var(--acc);font-weight:600;box-shadow:inset 0 2px var(--acc)}
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -95,18 +95,19 @@ const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){
-  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();
+  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}</button>`).join('');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
   const c=(a,b,k='')=>`<div class="stat"><small>${a}</small><b class="${k}">${b}</b></div>`;
-  return `<div class="stats">${c('Net P&amp;L',money(p),cls(p))}${S.bal?c('Account return',pc(p/S.bal*100,2),cls(p)):''}${c('Win rate',n?(w/n*100).toFixed(0)+'%':'0%','win')}${c('Loss rate',n?(l/n*100).toFixed(0)+'%':'0%','loss')}${c('Trades',n)}</div>`}
+  return `<div class="stats">${c('Net P&amp;L',money(p),cls(p))}${capital()>0?c('Account return',pc(p/capital()*100,2),cls(p)):''}${c('Win rate',n?(w/n*100).toFixed(0)+'%':'0%','win')}${c('Loss rate',n?(l/n*100).toFixed(0)+'%':'0%','loss')}${c('Trades',n)}</div>`}
 function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1">`:''}<div class="row" style="margin-top:8px"><span></span><button data-del="${t.id}">Delete</button></div></div>`}
 function evCard(e){return `<div class="card row"><div><span class="tag hi">High</span> <b>${e.cur}</b> ${esc(e.title)}<div class="muted">${e.date} ${e.time||''}${e.utc&&e.time?' '+tzName():''}</div></div><button data-dele="${e.id}" aria-label="Delete event">✕</button></div>`}
 
+const capital=()=>(+S.bal||0)+(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
 function risk(){
-  const b=+S.bal||0;if(!b)return null;
+  const b=capital();if(b<=0)return null;
   const dl=+(S.dl??5),ol=+(S.ol??10),tr=S.olt==='trailing',dLim=b*dl/100,oLim=b*ol/100;
   const byDay={};S.trades.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.pnl);
   let bal=b,peak=b,over='';const dayB=[];
@@ -155,7 +156,7 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="dow">${d}</div>`).join('')+'<div class="day empty"></div>'.repeat(first);
   for(let d=1;d<=n;d++){
     const k=mk+'-'+String(d).padStart(2,'0'),ts=S.trades.filter(t=>t.date===k),p=sum(ts),ev=E.some(e=>e.date===k);
-    cells+=`<button class="day ${ts.length?(p>=0?'w':'l'):''} ${BD.has(k)?'bd':''} ${k===sel?'sel':''} ${k===iso(new Date())?'today':''}" data-d="${k}"><b>${d}</b>${ts.length?`<span class="pn ${cls(p)}">${S.bal?pc(p/S.bal*100,2):money(p)}</span>`:'<span></span>'}${ev?'<i class="dot" title="High-impact news"></i>':''}${S.shots.some(s=>s.date===k)?'<i class="cam" title="Has screenshots">📷</i>':''}${NT()[k]?'<i class="nt" title="Has a day note">✎</i>':''}</button>`;
+    cells+=`<button class="day ${ts.length?(p>=0?'w':'l'):''} ${BD.has(k)?'bd':''} ${k===sel?'sel':''} ${k===iso(new Date())?'today':''}" data-d="${k}"><b>${d}</b>${ts.length?`<span class="pn ${cls(p)}">${capital()>0?pc(p/capital()*100,2):money(p)}</span>`:'<span></span>'}${ev?'<i class="dot" title="High-impact news"></i>':''}${S.shots.some(s=>s.date===k)?'<i class="cam" title="Has screenshots">📷</i>':''}${NT()[k]?'<i class="nt" title="Has a day note">✎</i>':''}</button>`;
   }
   const dt=S.trades.filter(t=>t.date===sel),de=E.filter(e=>e.date===sel);
   const td=loc(new Date().toISOString()).date,tE=E.filter(e=>e.date===td).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
@@ -163,9 +164,29 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   <div class="bar"><h2>${sel}</h2><span><button data-shot="1">📷 Screenshot</button> <button class="p" data-add="1">Add trade</button></span></div>
   ${noteCard(sel)}${de.map(evCard).join('')}${shotGrid(sel)}${dt.map(tradeCard).join('')||'<p class="muted">No trades logged. Tap Add trade to log one for this day.</p>'}`;
 }
-function vJr(){const l=[...S.trades].sort((a,b)=>b.date.localeCompare(a.date));return stats(S.trades)+syncCard()+`<div class="card"><label style="margin-top:0">Account capital (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
+function vCap(){
+  const f=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
+  const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<h2>Capital</h2><div class="card"><label style="margin-top:0">Starting capital (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
   <div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
-  <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label>
+  <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label></div>
+  <div class="card"><div class="row"><b>Total capital</b><b>${f(cap)}</b></div>
+  <div class="muted">Starting ${f(+S.bal||0)} · added ${(add>=0?'+':'−')+f(Math.abs(add))} · trading result <span class="${cls(net)}">${money(net)}</span></div>
+  <div class="row" style="margin-top:8px"><b>Current balance</b><b class="${cls(net)}">${f(cap+net)}</b></div></div>
+  ${riskCard()}
+  <div class="bar"><h2>Capital added</h2><button class="p" data-addcap="1">Add capital</button></div>
+  ${l.map(c=>`<div class="card row"><div><b class="${c.amt>=0?'win':'loss'}">${(c.amt>=0?'+':'−')+f(Math.abs(c.amt))}</b> <span class="muted">${c.date}</span>${c.note?`<div>${esc(c.note)}</div>`:''}</div><button data-delcap="${c.id}" aria-label="Delete">✕</button></div>`).join('')||'<p class="muted">No capital added yet. Use Add capital for a top-up, a new account size or a payout (enter a negative amount).</p>'}`;
+}
+function openCap(){
+  $('#dlg').innerHTML=`<form id="cf"><b>Add capital</b>
+  <label>Date<input type="date" name="date" value="${iso(new Date())}" required></label>
+  <label>Amount (use a negative number for a withdrawal or payout)<input type="number" step="any" name="amt" inputmode="decimal" required></label>
+  <label>Note<input name="note" placeholder="Top-up, scaling plan, payout"></label>
+  <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save</button></div></form>`;
+  $('#dlg').showModal();
+  $('#cf').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),a=+f.get('amt');if(!a)return;(S.caps||(S.caps=[])).push({id:Date.now()+'',date:f.get('date'),amt:a,note:f.get('note')});save();$('#dlg').close();render()};
+}
+function vJr(){const l=[...S.trades].sort((a,b)=>b.date.localeCompare(a.date));return stats(S.trades)+syncCard()+`<div class="card"><div class="muted" style="margin-bottom:8px">Your capital and prop firm limits are in the Capital tab.</div>
   <div class="links"><button data-mt5="1">Import MT5 history</button></div>
   <p class="muted" style="margin:0;font-size:13px">In MT5: History tab → right-click → Report → HTML (or CSV), then import that file here. Duplicates are skipped.</p></div>${notesList()}<div class="bar"><h2>All trades</h2><button class="p" data-add="1">Add trade</button></div>`+(l.map(tradeCard).join('')||'<p class="muted">Your journal is empty. Add your first trade.</p>')+`<div class="links"><button data-export="1">Export backup</button><button data-import="1">Import backup</button></div>`}
 function vCh(){
@@ -215,12 +236,14 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-addcap],[data-delcap],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
+  else if(D.addcap)return openCap();
+  else if(D.delcap){S.caps=(S.caps||[]).filter(x=>x.id!==D.delcap);save()}
   else if(D.on){sel=D.on;cur=new Date(D.on+'T00:00');tab='cal'}
   else if(D.m)cur=new Date(cur.getFullYear(),cur.getMonth()+ +D.m,1);
   else if(D.mt5)return importMT5();
@@ -314,7 +337,7 @@ async function pull(merge){
   const c=rows&&rows[0]&&rows[0].data;
   if(c&&Object.keys(c).length){
     const u=(a,b)=>[...new Map([...(a||[]),...(b||[])].map(x=>[x.id,x])).values()];
-    S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal,notes:{...(S.notes||{}),...(c.notes||{})},tz:c.tz||S.tz,seeded:1,seedv:Math.max(c.seedv||0,S.seedv||0)}:c;
+    S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal,notes:{...(S.notes||{}),...(c.notes||{})},caps:u(c.caps,S.caps),tz:c.tz||S.tz,seeded:1,seedv:Math.max(c.seedv||0,S.seedv||0)}:c;
     S.shots=S.shots||[];S.trades=S.trades||[];S.events=S.events||[];S.tz=S.tz||'UTC';
     try{localStorage.setItem('tj1',JSON.stringify(S))}catch(e){}
     if(merge)await push();else status('Loaded')
