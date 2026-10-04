@@ -27,6 +27,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .day{position:relative;min-height:58px;border-radius:8px;border:1px solid var(--line);background:var(--card);padding:4px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font-size:12px}
 .day.w{background:var(--winbg);border-color:var(--win)}.day.l{background:var(--lossbg);border-color:var(--loss)}
 .day.bd{border:2px solid var(--loss);box-shadow:0 0 0 2px var(--lossbg)}
+.qf{display:grid;grid-template-columns:1fr 1.2fr auto;gap:8px;margin-top:8px}
+.lg{width:100%;border-collapse:collapse;font-size:13px}.lg th,.lg td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}.lg th:first-child,.lg td:first-child{text-align:left}.lg button{min-height:28px;padding:0 8px}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -110,14 +112,16 @@ function risk(){
   const b=capital();if(b<=0)return null;
   const dl=+(S.dl??5),ol=+(S.ol??10),tr=S.olt==='trailing',dLim=b*dl/100,oLim=b*ol/100;
   const byDay={};S.trades.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.pnl);
-  let bal=b,peak=b,over='';const dayB=[];
+  let bal=b,peak=b,over='';const dayB=[],log=[];
   for(const d of Object.keys(byDay).sort()){
     const p=byDay[d];if(dl>0&&-p>=dLim-1e-9)dayB.push(d);
     bal+=p;peak=Math.max(peak,bal);
     if(ol>0&&!over&&bal<=(tr?peak:b)-oLim+1e-9)over=d;
+    const down=Math.max(0,(tr?peak:b)-bal);
+    log.push({d,p,bal,pct:p/b*100,dl:dLim?Math.max(0,-p)/dLim*100:0,od:oLim?down/oLim*100:0,hit:dl>0&&-p>=dLim-1e-9,br:over===d,q:S.trades.some(t=>t.date===d&&t.pair==='Daily P&L')});
   }
   const tp=byDay[iso(new Date())]||0,floor=(tr?peak:b)-oLim;
-  return{b,dl,ol,dLim,oLim,tr,bal,peak,floor,byDay,dayB,over,tp,dUsed:Math.max(0,-tp),oUsed:Math.max(0,(tr?peak:b)-bal)};
+  return{log,b,dl,ol,dLim,oLim,tr,bal,peak,floor,byDay,dayB,over,tp,dUsed:Math.max(0,-tp),oUsed:Math.max(0,(tr?peak:b)-bal)};
 }
 function riskCard(){
   const r=risk();
@@ -164,16 +168,44 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   <div class="bar"><h2>${sel}</h2><span><button data-shot="1">📷 Screenshot</button> <button class="p" data-add="1">Add trade</button></span></div>
   ${noteCard(sel)}${de.map(evCard).join('')}${shotGrid(sel)}${dt.map(tradeCard).join('')||'<p class="muted">No trades logged. Tap Add trade to log one for this day.</p>'}`;
 }
+let qDate='';
+const fm=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+function qPrev(){
+  const e=$('#qp');if(!e)return;const a=parseFloat($('#qa').value),d=$('#qd').value,r=risk();
+  if(!r){e.textContent='Set your starting capital above first.';return}
+  if(isNaN(a)){e.textContent='';return}
+  const day=(r.byDay[d]||0)+a,lim=r.dLim?Math.max(0,-day)/r.dLim*100:0;
+  e.textContent=`Day total ${money(day)} (${pc(day/r.b*100,2)} of capital, ${lim.toFixed(0)}% of daily limit) · balance after ${fm(r.bal+a)}`;
+}
+function dailyLog(){
+  const r=risk();if(!r||!r.log.length)return '';
+  const col=p=>p>=100?'loss':p>=70?'':'win';
+  const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.hit?'loss':col(x.dl)}">${x.dl.toFixed(0)}%${x.hit?' ⚠':''}</td><td class="${x.br?'loss':col(x.od)}">${x.od.toFixed(0)}%${x.br?' ⛔':''}</td><td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
+  return `<h2>Daily log</h2><div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Daily limit used</th><th>Overall limit used</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='qf')return;e.preventDefault();
+  const d=$('#qd').value,a=parseFloat($('#qa').value);if(!d||isNaN(a)||a===0)return;
+  S.trades.push({id:Date.now()+'',date:d,pair:'Daily P&L',side:'Net',pnl:a,notes:'',img:''});
+  qDate=d;sel=d;save();
+  const R2=risk();if(R2&&(R2.over||-(R2.byDay[d]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Stop trading and check the Prop firm limits card.';
+  render();
+});
+document.addEventListener('input',e=>{if(e.target.id==='qa'||e.target.id==='qd')qPrev()});
 function vCap(){
   const f=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
   return `<h2>Capital</h2><div class="card"><label style="margin-top:0">Starting capital (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
   <div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
   <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label></div>
+  <div class="card"><b>Log daily result</b>
+  <form id="qf" class="qf"><input type="date" id="qd" value="${qDate||iso(new Date())}" required aria-label="Date"><input type="number" step="any" id="qa" inputmode="decimal" placeholder="e.g. -100 for a loss" required aria-label="Result"><button class="p" type="submit">Add</button></form>
+  <div class="muted" style="font-size:13px;margin-top:6px">Type the day's result, use a minus for a loss. Your balance, daily % and limits update automatically.</div><div id="qp" class="muted" style="font-size:13px;margin-top:4px"></div></div>
   <div class="card"><div class="row"><b>Total capital</b><b>${f(cap)}</b></div>
   <div class="muted">Starting ${f(+S.bal||0)} · added ${(add>=0?'+':'−')+f(Math.abs(add))} · trading result <span class="${cls(net)}">${money(net)}</span></div>
   <div class="row" style="margin-top:8px"><b>Current balance</b><b class="${cls(net)}">${f(cap+net)}</b></div></div>
   ${riskCard()}
+  ${dailyLog()}
   <div class="bar"><h2>Capital added</h2><button class="p" data-addcap="1">Add capital</button></div>
   ${l.map(c=>`<div class="card row"><div><b class="${c.amt>=0?'win':'loss'}">${(c.amt>=0?'+':'−')+f(Math.abs(c.amt))}</b> <span class="muted">${c.date}</span>${c.note?`<div>${esc(c.note)}</div>`:''}</div><button data-delcap="${c.id}" aria-label="Delete">✕</button></div>`).join('')||'<p class="muted">No capital added yet. Use Add capital for a top-up, a new account size or a payout (enter a negative amount).</p>'}`;
 }
@@ -236,13 +268,14 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-addcap],[data-delcap],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
   else if(D.addcap)return openCap();
+  else if(D.delday){S.trades=S.trades.filter(t=>!(t.date===D.delday&&t.pair==='Daily P&L'));save()}
   else if(D.delcap){S.caps=(S.caps||[]).filter(x=>x.id!==D.delcap);save()}
   else if(D.on){sel=D.on;cur=new Date(D.on+'T00:00');tab='cal'}
   else if(D.m)cur=new Date(cur.getFullYear(),cur.getMonth()+ +D.m,1);
