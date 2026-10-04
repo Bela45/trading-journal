@@ -58,7 +58,6 @@ a{color:var(--acc)}.links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 <div id="view"></div></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const MAJ=['USD','EUR','GBP','JPY','AUD','CAD','CHF','NZD'];
 const PAIRS=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','USDCHF','NZDUSD','EURJPY','GBPJPY','XAUUSD','XAGUSD','US30','NAS100','SPX500','US02Y','US05Y','US10Y','US30Y'];
@@ -169,7 +168,7 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-login],[data-su],[data-so]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
@@ -178,6 +177,9 @@ document.addEventListener('click',e=>{
   else if(D.mt5)return importMT5();
   else if(D.login)return openLogin();
   else if(D.su){if(!$('#lf').reportValidity())return;return auth(true,$('#em').value.trim(),$('#pw').value)}
+  else if(D.resend)return resend();
+  else if(D.forgot)return forgot();
+  else if(D.chpw)return openNewPw();
   else if(D.so)return signOut();
   else if(D.shot)return addShots();
   else if(D.delshot){S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
@@ -224,25 +226,43 @@ function importMT5(){const i=document.createElement('input');i.type='file';i.acc
   }catch(x){warn='Could not read that file.'}render()};i.click()}
 document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.value;save();render()}if(e.target.id==='bal'){S.bal=Math.max(0,+e.target.value||0);save();render()}});
 const SB_URL='https://fbmtvcdgdrfmpgstgtns.supabase.co',SB_KEY='sb_publishable_V069cMMupLfikudhqr8PEw_2VToLMte';
-let sb=null,user=null,sync='',pt,busy=false,again=false,dirty=false;
-try{sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
-function syncCard(){return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${!sb?'The sync library did not load. Check your connection.':user?esc(user.email)+' · '+esc(sync||'Saved'):'Not signed in. Your data is only on this device.'}</div><div class="links">${user?'<button data-so="1">Sign out</button>':sb?'<button class="p" data-login="1">Sign in</button>':''}</div></div>`}
-function paintAcct(){const a=$('#acct');if(!a)return;a.innerHTML=!sb?'':user?`<small class="muted" id="hst">${esc(sync||'Saved')}</small><button data-so="1">Sign out</button>`:'<button class="p" data-login="1">Sign in</button>'}
+let recovery=false,user=null,sync='',pt,busy=false,again=false,dirty=false,sess=null,hashErr='',fromLink=false;
+try{sess=JSON.parse(localStorage.getItem('tjs'))}catch(e){}
+const NET='Cannot reach Supabase from this page. If you are viewing it inside claude.ai, download the file and open it in your browser, or use your hosted link.';
+const isNet=x=>!!x&&x.name==='TypeError';
+function setSess(r){
+  if(!r){sess=null;try{localStorage.removeItem('tjs')}catch(e){}return}
+  sess={access_token:r.access_token,refresh_token:r.refresh_token,expires_at:Date.now()/1000+(r.expires_in||3600)-30,user:r.user||(sess&&sess.user)||null};
+  try{localStorage.setItem('tjs',JSON.stringify(sess))}catch(e){}
+}
+async function token(){
+  if(!sess)throw Object.assign(new Error('Not signed in'),{status:401});
+  if(sess.expires_at<Date.now()/1000){const r=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:sess.refresh_token})});setSess(r)}
+  return sess.access_token;
+}
+async function api(path,opt={},auth=false){
+  const headers={apikey:SB_KEY,'Content-Type':'application/json',...(opt.headers||{})};
+  if(auth)headers.Authorization='Bearer '+await token();
+  const res=await fetch(SB_URL+path,{...opt,headers}),t=await res.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+  if(!res.ok)throw Object.assign(new Error((j&&(j.msg||j.error_description||j.message||j.error))||'Request failed ('+res.status+')'),{status:res.status,code:j&&(j.error_code||j.code)});
+  return j;
+}
+function syncCard(){return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${user?esc(user.email)+' · '+esc(sync||'Saved'):'Not signed in. Your data is only on this device.'}</div><div class="links">${user?'<button data-chpw="1">Change password</button><button data-so="1">Sign out</button>':'<button class="p" data-login="1">Sign in</button>'}</div></div>`}
+function paintAcct(){const a=$('#acct');if(!a)return;a.innerHTML=user?`<small class="muted" id="hst">${esc(sync||'Saved')}</small><button data-so="1">Sign out</button>`:'<button class="p" data-login="1">Sign in</button>'}
 function status(m){sync=m;const e=$('#syncst');if(e)e.textContent=(user?user.email+' · ':'')+m;const h=$('#hst');if(h)h.textContent=m}
+function expire(){user=null;setSess(null);paintAcct();openLogin('Your session expired. Please sign in again.')}
 async function push(){
-  clearTimeout(pt);if(!sb||!user)return;
+  clearTimeout(pt);if(!user)return;
   if(busy){again=true;return}
-  busy=true;status('Saving…');
-  let error;try{({error}=await sb.from('journal').upsert({user_id:user.id,data:S,updated_at:new Date().toISOString()}))}catch(x){error={message:'offline'}}
+  busy=true;status('Saving…');let err=null;
+  try{await api('/rest/v1/journal?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:user.id,data:S,updated_at:new Date().toISOString()})},true)}catch(x){err=x}
   busy=false;
-  if(error){status('Not saved: '+error.message);return}
-  dirty=false;status('Saved');
-  if(again){again=false;push()}
+  if(err){if(err.status===401)return expire();return status('Not saved: '+(isNet(err)?'offline':err.message))}
+  dirty=false;status('Saved');if(again){again=false;push()}
 }
 async function pull(merge){
-  const{data,error}=await sb.from('journal').select('data').eq('user_id',user.id).maybeSingle();
-  if(error){status('Could not load: '+error.message);return}
-  const c=data&&data.data;
+  let rows;try{rows=await api('/rest/v1/journal?select=data&user_id=eq.'+user.id,{},true)}catch(x){if(x.status===401)return expire();return status('Could not load: '+(isNet(x)?'offline':x.message))}
+  const c=rows&&rows[0]&&rows[0].data;
   if(c&&Object.keys(c).length){
     const u=(a,b)=>[...new Map([...(a||[]),...(b||[])].map(x=>[x.id,x])).values()];
     S=merge?{...c,trades:u(c.trades,S.trades),events:u(c.events,S.events),shots:u(c.shots,S.shots),bal:c.bal||S.bal,tz:c.tz||S.tz,seeded:1,seedv:Math.max(c.seedv||0,S.seedv||0)}:c;
@@ -251,34 +271,86 @@ async function pull(merge){
     if(merge)await push();else status('Loaded')
   }else await push();
 }
-function openLogin(){
+function openLogin(msg){
   const d=$('#dlg');
-  d.innerHTML=`<form id="lf"><b>Sign in to sync your journal</b>
+  d.innerHTML=`<form id="lf"><b>Sign in to sync your journal</b><p id="rch" class="muted" style="font-size:13px;margin:6px 0 0"></p>
   <label>Email<input id="em" type="email" autocomplete="email" required></label>
   <label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6" required></label>
-  <p id="lerr" class="loss" role="alert"></p>
+  <div class="links" style="margin:6px 0 0"><button type="button" data-forgot="1">Forgot password?</button></div>
+  <p id="lerr" class="loss" role="alert">${esc(msg||'')}</p><p id="lok" class="win" role="status"></p>
+  <div class="links" id="rs" hidden><button type="button" data-resend="1">Resend verification email</button></div>
   <div class="row"><button type="button" data-close="1">Cancel</button><span><button type="button" data-su="1">Create account</button> <button class="p" type="submit">Sign in</button></span></div></form>`;
-  d.showModal();
+  if(!d.open)d.showModal();
   $('#lf').onsubmit=e=>{e.preventDefault();auth(false,$('#em').value.trim(),$('#pw').value)};
+  api('/auth/v1/settings').then(c=>{const r=$('#rch');if(r)r.textContent=c.disable_signup?'New sign-ups are turned off for this project.':c.mailer_autoconfirm?'':'New accounts must verify their email before they can sign in.'}).catch(x=>{const r=$('#rch');if(r&&isNet(x)){r.className='loss';r.textContent=NET}});
 }
+function msg(m,ok){const e=$('#lerr'),o=$('#lok');if(e)e.textContent=ok?'':m;if(o)o.textContent=ok?m:''}
 async function auth(up,email,password){
-  const err=m=>{const e=$('#lerr');if(e)e.textContent=m};
-  err('Working…');
-  let r;try{r=up?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password})}catch(x){return err('Network error. Check your connection.')}
-  if(r.error)return err(r.error.message);
-  if(!r.data.session)return err('Account created. Check your email to confirm it, then sign in.');
-  user=r.data.user;$('#dlg').close();status('Syncing…');await pull(true);render();
+  msg('Working…',1);
+  try{
+    const q=/^https?:/.test(location.protocol)?'?redirect_to='+encodeURIComponent(location.origin+location.pathname):'';
+    const r=up?await api('/auth/v1/signup'+q,{method:'POST',body:JSON.stringify({email,password})}):await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
+    if(!r||!r.access_token){$('#rs').hidden=false;return msg('Almost done. If this email is new, we sent a verification link to '+email+'. Open it, then press Sign in here. If you already have an account, just press Sign in.',1)}
+    setSess(r);user=sess.user;
+  }catch(x){
+    if(isNet(x))return msg(NET);
+    if(x.code==='email_not_confirmed'||/not confirmed/i.test(x.message)){$('#rs').hidden=false;return msg('Your email is not verified yet. Open the link we emailed you, or resend it below.')}
+    if(x.code==='user_already_exists'||/already registered/i.test(x.message))return msg('That email already has an account. Press Sign in instead.');
+    if(x.status===429||/rate limit/i.test(x.message))return msg('Too many emails were sent. Wait a while and try again, or ask the project owner to turn off email confirmation.');
+    return msg(x.message);
+  }
+  $('#dlg').close();status('Syncing…');await pull(true);render();
+}
+async function resend(){
+  const email=$('#em').value.trim();if(!email)return msg('Enter your email first.');
+  try{await api('/auth/v1/resend',{method:'POST',body:JSON.stringify({type:'signup',email})});msg('Verification email sent to '+email+'. Check your inbox and spam folder.',1)}
+  catch(x){msg(isNet(x)?NET:(x.status===429?'Please wait a minute before asking for another email.':x.message))}
+}
+async function forgot(){
+  const email=$('#em').value.trim();if(!email)return msg('Enter your email above first, then press Forgot password.');
+  msg('Sending…',1);
+  try{
+    const q=/^https?:/.test(location.protocol)?'?redirect_to='+encodeURIComponent(location.origin+location.pathname):'';
+    await api('/auth/v1/recover'+q,{method:'POST',body:JSON.stringify({email})});
+    msg('If an account exists for '+email+', we sent a password reset link. Open it on this device to choose a new password. Check spam too.',1);
+  }catch(x){msg(isNet(x)?NET:(x.status===429||/rate limit/i.test(x.message)?'Please wait a minute before asking for another email.':x.message))}
+}
+function openNewPw(){
+  const d=$('#dlg');
+  d.innerHTML=`<form id="pf"><b>${user?'Set a new password':'Choose a new password'}</b>
+  <label>New password (6+ characters)<input id="np" type="password" autocomplete="new-password" minlength="6" required></label>
+  <label>Repeat new password<input id="np2" type="password" autocomplete="new-password" minlength="6" required></label>
+  <p id="lerr" class="loss" role="alert"></p><p id="lok" class="win" role="status"></p>
+  <div class="row"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save password</button></div></form>`;
+  if(!d.open)d.showModal();
+  $('#pf').onsubmit=async e=>{e.preventDefault();
+    const a=$('#np').value,b=$('#np2').value;if(a!==b)return msg('The two passwords do not match.');
+    msg('Saving…',1);
+    try{await api('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:a})},true)}
+    catch(x){return msg(isNet(x)?NET:x.message)}
+    $('#dlg').close();status('Password updated');
+  };
 }
 async function signOut(){
   if(dirty)await push();
-  try{await sb.auth.signOut()}catch(e){}
-  user=null;sync='';S={trades:[],events:[],shots:[]};try{localStorage.removeItem('tj1')}catch(e){}
+  try{await api('/auth/v1/logout',{method:'POST'},true)}catch(e){}
+  user=null;sync='';setSess(null);S={trades:[],events:[],shots:[]};try{localStorage.removeItem('tj1')}catch(e){}
   load();render();
 }
-if(sb){
-  sb.auth.getSession().then(async({data})=>{if(data.session){user=data.session.user;status('Loading…');await pull(false);render()}});
-  sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'&&user){user=null;paintAcct()}});
-}
+(function takeHash(){
+  const h=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(h.get('access_token')){setSess({access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),expires_in:+h.get('expires_in')||3600,user:null});fromLink=true;recovery=h.get('type')==='recovery';history.replaceState(null,'',location.pathname+location.search)}
+  else if(h.get('error_description')){hashErr=h.get('error_description').replace(/\+/g,' ')+'. Enter your email and press Forgot password for a new reset link, or Resend if you were verifying a new account.';history.replaceState(null,'',location.pathname+location.search)}
+})();
+(async()=>{
+  if(sess){
+    try{const u=await api('/auth/v1/user',{},true);user={id:u.id,email:u.email};sess.user=user;setSess({...sess,expires_in:(sess.expires_at-Date.now()/1000)+30});status('Loading…');await pull(fromLink);if(fromLink&&!recovery)status('Email verified. Saved')}
+    catch(x){if(x.status===401||x.status===403){setSess(null);user=null}}
+    render();
+    if(recovery&&user)openNewPw();
+  }
+  if(hashErr){openLogin(hashErr);$('#rs').hidden=false}
+})();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push()});
 addEventListener('pagehide',()=>{if(dirty)push()});
 $('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
