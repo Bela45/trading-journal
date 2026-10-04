@@ -29,6 +29,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .day.bd{border:2px solid var(--loss);box-shadow:0 0 0 2px var(--lossbg)}
 .qf{display:grid;grid-template-columns:1fr 1.2fr auto;gap:8px;margin-top:8px}
 .lg{width:100%;border-collapse:collapse;font-size:13px}.lg th,.lg td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}.lg th:first-child,.lg td:first-child{text-align:left}.lg button{min-height:28px;padding:0 8px}
+.pwbox{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;padding:14px 10px;border:2px dashed var(--acc);border-radius:10px;text-align:center;background:var(--bg);user-select:all;word-break:break-all;margin-top:8px}
 .emo{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.emo button{min-height:36px;padding:2px 8px;font-size:18px;line-height:1}
 #tprev img{max-width:100%;border-radius:8px;margin-top:8px;display:block}
 .shot button.ed1{left:4px;right:auto}
@@ -335,7 +336,7 @@ document.addEventListener('click',e=>{
   else if(D.m)cur=new Date(cur.getFullYear(),cur.getMonth()+ +D.m,1);
   else if(D.mt5)return importMT5();
   else if(D.login)return openLogin();
-  else if(D.su){if(!$('#lf').reportValidity())return;return auth(true,$('#em').value.trim(),$('#pw').value)}
+  else if(D.su){if(!$('#em').reportValidity())return;return signupAuto($('#em').value.trim())}
   else if(D.resend)return resend();
   else if(D.forgot)return forgot();
   else if(D.chpw)return openNewPw();
@@ -445,17 +446,19 @@ function openLogin(msg){
   const d=$('#dlg');
   d.innerHTML=`<form id="lf"><b>Sign in to sync your journal</b><p id="rch" class="muted" style="font-size:13px;margin:6px 0 0"></p>
   <label>Email<input id="em" type="email" autocomplete="email" required></label>
-  <label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6" required></label>
+  <label>Password<input id="pw" type="password" autocomplete="current-password"></label>
+  <p class="muted" style="font-size:13px;margin:8px 0 0"><b>New here?</b> Type only your email and tap <b>Create account</b>. We generate a unique password for you.</p>
   <div class="links" style="margin:6px 0 0"><button type="button" data-forgot="1">Forgot password?</button></div>
   <p id="lerr" class="loss" role="alert">${esc(msg||'')}</p><p id="lok" class="win" role="status"></p>
   <div class="links" id="rs" hidden><button type="button" data-resend="1">Resend verification email</button></div>
   <div class="row"><button type="button" data-close="1">Cancel</button><span><button type="button" data-su="1">Create account</button> <button class="p" type="submit">Sign in</button></span></div></form>`;
   if(!d.open)d.showModal();
   $('#lf').onsubmit=e=>{e.preventDefault();auth(false,$('#em').value.trim(),$('#pw').value)};
-  api('/auth/v1/settings').then(c=>{const r=$('#rch');if(r)r.textContent=c.disable_signup?'New sign-ups are turned off for this project.':c.mailer_autoconfirm?'':'New accounts must verify their email before they can sign in.'}).catch(x=>{const r=$('#rch');if(r&&isNet(x)){r.className='loss';r.textContent=NET}});
+  api('/auth/v1/settings').catch(x=>{const r=$('#rch');if(r&&isNet(x)){r.className='loss';r.textContent=NET}});
 }
 function msg(m,ok){const e=$('#lerr'),o=$('#lok');if(e)e.textContent=ok?'':m;if(o)o.textContent=ok?m:''}
 async function auth(up,email,password){
+  if(!up&&!password)return msg('Enter your password, or tap Create account if you are new.');
   msg('Working…',1);
   try{
     const q=/^https?:/.test(location.protocol)?'?redirect_to='+encodeURIComponent(location.origin+location.pathname):'';
@@ -470,6 +473,30 @@ async function auth(up,email,password){
     return msg(x.message);
   }
   $('#dlg').close();status('Syncing…');await pull(true);render();
+}
+async function signupAuto(email){
+  msg('Creating your account…',1);
+  let r;
+  try{r=await api('/functions/v1/signup',{method:'POST',body:JSON.stringify({email})})}
+  catch(x){return msg(isNet(x)?NET:x.message)}
+  let ok=false;
+  try{const t=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:r.email,password:r.password})});setSess(t);user=sess.user;ok=true}catch(x){}
+  showPassword(r.email,r.password,ok);
+}
+function showPassword(email,pw,ok){
+  const d=$('#dlg');
+  d.innerHTML=`<div><b>Account created</b><p>This is your password. It is shown <b>only once</b>, so save it somewhere safe before you continue.</p>
+  <div class="pwbox" id="pwv">${esc(pw)}</div>
+  <p class="muted" style="font-size:13px;margin:8px 0 0">Email: ${esc(email)}</p>
+  <div class="links"><button type="button" id="pwcopy">Copy password</button></div>
+  <label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="pwsaved" style="width:auto;min-height:0"> I have saved my password</label>
+  <p class="muted" style="font-size:13px">You can change it later in the Journal tab with Change password.</p>
+  <div class="row" style="margin-top:12px"><span></span><button class="p" id="pwgo" disabled>Continue</button></div></div>`;
+  if(!d.open)d.showModal();
+  d.oncancel=e=>e.preventDefault();
+  $('#pwsaved').onchange=e=>{$('#pwgo').disabled=!e.target.checked};
+  $('#pwcopy').onclick=async()=>{try{await navigator.clipboard.writeText(pw);$('#pwcopy').textContent='Copied ✓'}catch(e){const g=document.createRange();g.selectNodeContents($('#pwv'));const sl=getSelection();sl.removeAllRanges();sl.addRange(g);$('#pwcopy').textContent='Selected. Copy it now'}};
+  $('#pwgo').onclick=async()=>{d.oncancel=null;d.close();if(ok){status('Syncing…');await pull(true);render()}else{openLogin('Account created. Sign in with your password.');$('#em').value=email}};
 }
 async function resend(){
   const email=$('#em').value.trim();if(!email)return msg('Enter your email first.');
