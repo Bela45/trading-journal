@@ -44,7 +44,7 @@ dialog#dlg2{width:min(760px,97vw);max-height:94vh;overflow:auto}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
-.day.empty{visibility:hidden}.day .pn{font-weight:600;font-size:11px;word-break:break-all}
+.day.empty{visibility:hidden}.day .pn{font-weight:600;font-size:10px;white-space:nowrap;letter-spacing:-.2px}
 .dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--loss);box-shadow:0 0 0 2px var(--card)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
 .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -105,7 +105,8 @@ function tzName(){return new Intl.DateTimeFormat('en',{timeZone:S.tz,timeZoneNam
 function evs(){return S.events.map(e=>e.utc?{...e,...loc(e.utc)}:e)}
 function tzOpts(sel){const l=TZS.some(z=>z[0]===sel)?TZS:[[sel,sel],...TZS];return l.map(([v,n])=>`<option value="${v}" ${v===sel?'selected':''}>${n}</option>`).join('')}
 function save(){dirty=true;try{localStorage.setItem('tjd','1')}catch(e){}clearTimeout(pt);pt=setTimeout(push,700);try{localStorage.setItem('tj1',JSON.stringify(S));warn=''}catch(e){warn='Storage is full. Delete old screenshots to keep saving.'}}
-const money=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(2);
+const money=n=>(n>=0?'+':'−')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+const moneyC=n=>{const a=Math.abs(n);return (n>=0?'+':'−')+'$'+(a>=1000?(a/1000).toFixed(a>=10000?0:1)+'k':Math.round(a))};
 const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
@@ -117,7 +118,7 @@ const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
   const c=(a,b,k='')=>`<div class="stat"><small>${a}</small><b class="${k}">${b}</b></div>`;
   return `<div class="stats">${c('Net P&amp;L',money(p),cls(p))}${capital()>0?c('Account return',pc(p/capital()*100,2),cls(p)):''}${c('Win rate',n?(w/n*100).toFixed(0)+'%':'0%','win')}${c('Loss rate',n?(l/n*100).toFixed(0)+'%':'0%','loss')}${c('Trades',n)}</div>`}
-function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1"><button data-edt="${t.id}" style="margin-top:6px">✏️ Draw on screenshot</button>`:''}<div class="row" style="margin-top:8px"><span></span><span><button data-edtr="${t.id}">✏️ Edit</button> <button data-del="${t.id}">Delete</button></span></div></div>`}
+function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1"><button data-edt="${t.id}" style="margin-top:6px">✏️ Draw on screenshot</button> <button data-dti="${t.id}" style="margin-top:6px">🗑 Delete screenshot</button>`:''}<div class="row" style="margin-top:8px"><span></span><span><button data-edtr="${t.id}">✏️ Edit</button> <button data-del="${t.id}">Delete</button></span></div></div>`}
 function evCard(e){return `<div class="card row"><div><span class="tag hi">High</span> <b>${e.cur}</b> ${esc(e.title)}<div class="muted">${e.date} ${e.time||''}${e.utc&&e.time?' '+tzName():''}</div></div><button data-dele="${e.id}" aria-label="Delete event">✕</button></div>`}
 
 const capital=()=>(+S.bal||0)+(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
@@ -139,7 +140,7 @@ function risk(){
 function riskCard(){
   const r=risk();
   if(!r)return `<div class="note">Enter your prop firm account capital in the Journal tab to track your daily and overall loss limits.</div>`;
-  const f=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dp=r.dLim?r.dUsed/r.dLim*100:0,op=r.oLim?r.oUsed/r.oLim*100:0,mx=Math.max(dp,op);
   const col=p=>p>=100?'var(--loss)':p>=70?'var(--warn,#d98a00)':'var(--win)';
   const st=r.over?['BREACHED','loss']:dp>=100?['DAILY LIMIT HIT','loss']:mx>=70?['NEAR LIMIT','']:['SAFE','win'];
@@ -203,7 +204,7 @@ function openNote(d){
   $('#dlg').showModal();wireEmo('emo2','nt');$('#nt').focus();
   $('#nf').onsubmit=e=>{e.preventDefault();const v=$('#nt').value.trim();NT()[d]=v;save();$('#dlg').close();render()};
 }
-function shotGrid(d){const l=S.shots.filter(s=>s.date===d);return l.length?`<div class="shots">${l.map(s=>`<div class="shot"><img src="${s.img}" alt="Screenshot for ${d}" data-z="1"><button data-delshot="${s.id}" aria-label="Delete screenshot">✕</button><button class="ed1" data-edshot="${s.id}" aria-label="Draw on screenshot">✏️</button></div>`).join('')}</div>`:''}
+function shotGrid(d){const l=S.shots.filter(s=>s.date===d);return l.length?`<div class="shots">${l.map(s=>`<div class="shot"><img src="${s.img}" alt="Screenshot for ${d}" data-z="1"><button data-delshot="${s.id}" aria-label="Delete screenshot" title="Delete screenshot">🗑</button><button class="ed1" data-edshot="${s.id}" aria-label="Draw on screenshot">✏️</button></div>`).join('')}</div>`:''}
 function addShots(){const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=true;i.onchange=async()=>{for(const f of i.files){const img=await shrink(f);if(img)S.shots.push({id:Date.now()+Math.random()+'',date:sel,img})}save();render()};i.click()}
 function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Boolean)):new Set();
   const y=cur.getFullYear(),m=cur.getMonth(),first=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate();
@@ -212,7 +213,7 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="dow">${d}</div>`).join('')+'<div class="day empty"></div>'.repeat(first);
   for(let d=1;d<=n;d++){
     const k=mk+'-'+String(d).padStart(2,'0'),ts=S.trades.filter(t=>t.date===k),p=sum(ts),ev=E.some(e=>e.date===k);
-    cells+=`<button class="day ${ts.length?(p>=0?'w':'l'):''} ${BD.has(k)?'bd':''} ${k===sel?'sel':''} ${k===iso(new Date())?'today':''}" data-d="${k}"><b>${d}</b>${ts.length?`<span class="pn ${cls(p)}">${capital()>0?pc(p/capital()*100,2):money(p)}</span>`:'<span></span>'}${ev?'<i class="dot" title="High-impact news"></i>':''}${S.shots.some(s=>s.date===k)?'<i class="cam" title="Has screenshots">📷</i>':''}${NT()[k]?'<i class="nt" title="Has a day note">✎</i>':''}</button>`;
+    cells+=`<button class="day ${ts.length?(p>=0?'w':'l'):''} ${BD.has(k)?'bd':''} ${k===sel?'sel':''} ${k===iso(new Date())?'today':''}" data-d="${k}"><b>${d}</b>${ts.length?`<span class="pn ${cls(p)}">${capital()>0?pc(p/capital()*100,2):moneyC(p)}</span>`:'<span></span>'}${ev?'<i class="dot" title="High-impact news"></i>':''}${S.shots.some(s=>s.date===k)?'<i class="cam" title="Has screenshots">📷</i>':''}${NT()[k]?'<i class="nt" title="Has a day note">✎</i>':''}</button>`;
   }
   const dt=S.trades.filter(t=>t.date===sel),de=E.filter(e=>e.date===sel);
   const td=loc(new Date().toISOString()).date,tE=E.filter(e=>e.date===td).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
@@ -221,7 +222,7 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   ${noteCard(sel)}${de.map(evCard).join('')}${shotGrid(sel)}${dt.map(tradeCard).join('')||'<p class="muted">No trades logged. Tap Add trade to log one for this day.</p>'}`;
 }
 let qDate='';
-const fm=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fm=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
 function qPrev(){
   const e=$('#qp');if(!e)return;const a=parseFloat($('#qa').value),d=$('#qd').value,r=risk();
   if(!r){e.textContent='Set your starting capital above first.';return}
@@ -301,13 +302,13 @@ function takeSignal(id){
   paintBadge();
 }
 function vCap(){
-  const f=n=>n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
+  const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
-  return `<h2>Capital</h2><div class="card"><label style="margin-top:0">Starting capital (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
+  return `<h2>Capital</h2><div class="card"><label style="margin-top:0">Starting capital in $ (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
   <div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
   <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label></div>
   <div class="card"><b>Log daily result</b>
-  <form id="qf" class="qf"><input type="date" id="qd" value="${qDate||iso(new Date())}" required aria-label="Date"><input type="number" step="any" id="qa" inputmode="decimal" placeholder="e.g. -100 for a loss" required aria-label="Result"><button class="p" type="submit">Add</button></form>
+  <form id="qf" class="qf"><input type="date" id="qd" value="${qDate||iso(new Date())}" required aria-label="Date"><input type="number" step="any" id="qa" inputmode="decimal" placeholder="Result in $, e.g. -100" required aria-label="Result"><button class="p" type="submit">Add</button></form>
   <div class="muted" style="font-size:13px;margin-top:6px">Type the day's result, use a minus for a loss. Your balance, daily % and limits update automatically.</div><div id="qp" class="muted" style="font-size:13px;margin-top:4px"></div></div>
   <div class="card"><div class="row"><b>Total capital</b><b>${f(cap)}</b></div>
   <div class="muted">Starting ${f(+S.bal||0)} · added ${(add>=0?'+':'−')+f(Math.abs(add))} · trading result <span class="${cls(net)}">${money(net)}</span></div>
@@ -320,7 +321,7 @@ function vCap(){
 function openCap(){
   $('#dlg').innerHTML=`<form id="cf"><b>Add capital</b>
   <label>Date<input type="date" name="date" value="${iso(new Date())}" required></label>
-  <label>Amount (use a negative number for a withdrawal or payout)<input type="number" step="any" name="amt" inputmode="decimal" required></label>
+  <label>Amount in $ (use a negative number for a withdrawal or payout)<input type="number" step="any" name="amt" inputmode="decimal" required></label>
   <label>Note<input name="note" placeholder="Top-up, scaling plan, payout"></label>
   <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save</button></div></form>`;
   $('#dlg').showModal();
@@ -353,7 +354,7 @@ function openTrade(editId){
   <label>Instrument<select name="pair" id="pairSel">${[['Forex',PAIRS.slice(0,9)],['Metals',['XAUUSD','XAGUSD']],['Indices',['US30','NAS100','SPX500']],['Bonds (Treasury yields)',['US02Y','US05Y','US10Y','US30Y']]].map(([g,l])=>`<optgroup label="${g}">${l.map(p=>`<option value="${p}">${LBL[p]||p}`).join('')}</optgroup>`).join('')}<option value="OTHER">Other…</option></select></label>
   <label id="otherLbl" hidden>Other instrument<input name="other" placeholder="e.g. GER40, USOIL"></label>
   <label>Side<select name="side"><option>Long</option><option>Short</option></select></label>
-  <label>Result (P&amp;L, negative for a loss)<input type="number" step="any" name="pnl" required inputmode="decimal"></label>
+  <label>Result in $ (P&amp;L, negative for a loss)<input type="number" step="any" name="pnl" required inputmode="decimal"></label>
   <label>Notes<textarea name="notes" id="tn" rows="3" placeholder="Setup, emotions, lesson"></textarea></label>
   ${emoBar('emo1')}
   <label>Screenshot<input type="file" name="img" id="tfile" accept="image/*"></label>
@@ -388,7 +389,7 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-edt],[data-edtr],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
@@ -417,7 +418,8 @@ document.addEventListener('click',e=>{
   else if(D.chpw)return openNewPw();
   else if(D.so)return signOut();
   else if(D.shot)return addShots();
-  else if(D.delshot){tomb(D.delshot);S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
+  else if(D.dti){const t=S.trades.find(x=>x.id===D.dti);if(!t||!confirm('Delete the screenshot from this trade?'))return;t.img='';t.upd=Date.now();save()}
+  else if(D.delshot){if(!confirm('Delete this screenshot?'))return;tomb(D.delshot);S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
   else if(D.edtr)return openTrade(D.edtr);
   else if(D.add)return openTrade();
   else if(D.adde)return openEvent();
