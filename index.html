@@ -117,7 +117,7 @@ const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
   const c=(a,b,k='')=>`<div class="stat"><small>${a}</small><b class="${k}">${b}</b></div>`;
   return `<div class="stats">${c('Net P&amp;L',money(p),cls(p))}${capital()>0?c('Account return',pc(p/capital()*100,2),cls(p)):''}${c('Win rate',n?(w/n*100).toFixed(0)+'%':'0%','win')}${c('Loss rate',n?(l/n*100).toFixed(0)+'%':'0%','loss')}${c('Trades',n)}</div>`}
-function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1"><button data-edt="${t.id}" style="margin-top:6px">✏️ Draw on screenshot</button>`:''}<div class="row" style="margin-top:8px"><span></span><button data-del="${t.id}">Delete</button></div></div>`}
+function tradeCard(t){return `<div class="card"><div class="row"><b>${esc(t.pair)} <span class="tag">${t.side}</span></b><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div><div class="muted">${t.date}</div>${t.notes?`<div>${esc(t.notes)}</div>`:''}${t.img?`<img src="${t.img}" alt="Trade screenshot" data-z="1"><button data-edt="${t.id}" style="margin-top:6px">✏️ Draw on screenshot</button>`:''}<div class="row" style="margin-top:8px"><span></span><span><button data-edtr="${t.id}">✏️ Edit</button> <button data-del="${t.id}">Delete</button></span></div></div>`}
 function evCard(e){return `<div class="card row"><div><span class="tag hi">High</span> <b>${e.cur}</b> ${esc(e.title)}<div class="muted">${e.date} ${e.time||''}${e.utc&&e.time?' '+tzName():''}</div></div><button data-dele="${e.id}" aria-label="Delete event">✕</button></div>`}
 
 const capital=()=>(+S.bal||0)+(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
@@ -346,9 +346,10 @@ function vNwEv(){
   ${up.map(evCard).join('')||'<p class="muted">No upcoming high-impact events saved. Add one from Forex Factory.</p>'}`;
 }
 
-function openTrade(){
-  $('#dlg').innerHTML=`<form method="dialog" id="tf"><b>New trade</b>
-  <label>Date<input type="date" name="date" value="${sel}" required></label>
+function openTrade(editId){
+  const T=editId?S.trades.find(x=>x.id===editId):null;
+  $('#dlg').innerHTML=`<form method="dialog" id="tf"><b>${T?'Edit trade':'New trade'}</b>
+  <label>Date<input type="date" name="date" value="${T?T.date:sel}" required></label>
   <label>Instrument<select name="pair" id="pairSel">${[['Forex',PAIRS.slice(0,9)],['Metals',['XAUUSD','XAGUSD']],['Indices',['US30','NAS100','SPX500']],['Bonds (Treasury yields)',['US02Y','US05Y','US10Y','US30Y']]].map(([g,l])=>`<optgroup label="${g}">${l.map(p=>`<option value="${p}">${LBL[p]||p}`).join('')}</optgroup>`).join('')}<option value="OTHER">Other…</option></select></label>
   <label id="otherLbl" hidden>Other instrument<input name="other" placeholder="e.g. GER40, USOIL"></label>
   <label>Side<select name="side"><option>Long</option><option>Short</option></select></label>
@@ -357,14 +358,21 @@ function openTrade(){
   ${emoBar('emo1')}
   <label>Screenshot<input type="file" name="img" id="tfile" accept="image/*"></label>
   <div id="tprev" hidden><img id="pimg" alt="Screenshot preview"><div class="links"><button type="button" id="ped">✏️ Draw on screenshot</button><button type="button" id="prm">Remove</button></div></div>
-  <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">Save trade</button></div></form>`;
+  <div class="row" style="margin-top:14px"><button type="button" data-close="1">Cancel</button><button class="p" type="submit">${T?'Save changes':'Save trade'}</button></div></form>`;
   $('#dlg').showModal();
   wireTrade();
+  if(T){
+    const ps=$('#pairSel'),known=[...ps.options].some(o=>o.value===T.pair);ps.value=known?T.pair:'OTHER';ps.dispatchEvent(new Event('change'));if(!known)$('#otherLbl input').value=T.pair;
+    const sd=$('#tf [name=side]');if(!['Long','Short'].includes(T.side))sd.add(new Option(T.side,T.side));sd.value=T.side;
+    $('#tf [name=pnl]').value=T.pnl;$('#tn').value=T.notes||'';
+    pendingImg=T.img||'';if(pendingImg){$('#tprev').hidden=false;$('#pimg').src=pendingImg}
+  }
   $('#pairSel').onchange=e=>{const o=e.target.value==='OTHER';$('#otherLbl').hidden=!o;$('#otherLbl input').required=o};
   $('#tf').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),file=f.get('img');
     if(!pendingImg&&file&&file.size)pendingImg=await shrink(file);
-    const pr=f.get('pair')==='OTHER'?f.get('other').trim().toUpperCase():f.get('pair');
-    S.trades.push({id:Date.now()+'',date:f.get('date'),pair:pr,side:f.get('side'),pnl:+f.get('pnl'),notes:f.get('notes'),img:pendingImg});
+    const oth=f.get('other').trim(),pr=f.get('pair')==='OTHER'?(T&&oth===T.pair?T.pair:oth.toUpperCase()):f.get('pair');
+    const rec={date:f.get('date'),pair:pr,side:f.get('side'),pnl:+f.get('pnl'),notes:f.get('notes'),img:pendingImg};
+    if(T)Object.assign(T,rec,{upd:Date.now()});else S.trades.push({id:Date.now()+'',...rec});
     sel=f.get('date');save();const R2=risk();if(R2&&(R2.over||-(R2.byDay[sel]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Check the Prop firm limits card on the Calendar tab.';$('#dlg').close();render()};
 }
 function openEvent(){
@@ -380,7 +388,7 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-edt],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-edt],[data-edtr],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
@@ -405,10 +413,12 @@ document.addEventListener('click',e=>{
   else if(D.su){if(!$('#em').reportValidity())return;return signupAuto($('#em').value.trim())}
   else if(D.resend)return resend();
   else if(D.forgot)return forgot();
+  else if(D.plink)return usePasted();
   else if(D.chpw)return openNewPw();
   else if(D.so)return signOut();
   else if(D.shot)return addShots();
   else if(D.delshot){tomb(D.delshot);S.shots=S.shots.filter(x=>x.id!==D.delshot);save()}
+  else if(D.edtr)return openTrade(D.edtr);
   else if(D.add)return openTrade();
   else if(D.adde)return openEvent();
   else if(D.close)return $('#dlg').close();
@@ -480,7 +490,7 @@ function expire(){user=null;setSess(null);paintAcct();openLogin('Your session ex
 const tomb=(...ids)=>{S.del=S.del||{};ids.forEach(i=>S.del[i]=1)};
 function mergeData(c,l){
   const del={...(c.del||{}),...(l.del||{})};
-  const u=(a,b)=>[...new Map([...(a||[]),...(b||[])].filter(x=>!del[x.id]).map(x=>[x.id,x])).values()];
+  const u=(a,b)=>{const m=new Map();for(const x of [...(a||[]),...(b||[])]){if(del[x.id])continue;const o=m.get(x.id);if(!o||(x.upd||0)>=(o.upd||0))m.set(x.id,x)}return [...m.values()]};
   return{...c,...l,del,trades:u(c.trades,l.trades),events:u(c.events,l.events),shots:u(c.shots,l.shots),caps:u(c.caps,l.caps),notes:{...(c.notes||{}),...(l.notes||{})}};
 }
 async function push(){
@@ -517,6 +527,7 @@ function openLogin(msg){
   <p class="muted" style="font-size:13px;margin:8px 0 0"><b>New here?</b> Type only your email and tap <b>Create account</b>. We generate a unique password for you.</p>
   <div class="links" style="margin:6px 0 0"><button type="button" data-forgot="1">Forgot password?</button></div>
   <p id="lerr" class="loss" role="alert">${esc(msg||'')}</p><p id="lok" class="win" role="status"></p>
+  <div id="paste" hidden><label>Reset link not opening? Copy the full address from your browser's address bar and paste it here<input id="plink" placeholder="https://…#access_token=…"></label><div class="links"><button type="button" data-plink="1">Use link</button></div></div>
   <div class="links" id="rs" hidden><button type="button" data-resend="1">Resend verification email</button></div>
   <div class="row"><button type="button" data-close="1">Cancel</button><span><button type="button" data-su="1">Create account</button> <button class="p" type="submit">Sign in</button></span></div></form>`;
   if(!d.open)d.showModal();
@@ -550,9 +561,9 @@ async function signupAuto(email){
   try{const t=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:r.email,password:r.password})});setSess(t);user=sess.user;ok=true}catch(x){}
   showPassword(r.email,r.password,ok);
 }
-function showPassword(email,pw,ok){
+function showPassword(email,pw,ok,title){
   const d=$('#dlg');
-  d.innerHTML=`<div><b>Account created</b><p>This is your password. It is shown <b>only once</b>, so save it somewhere safe before you continue.</p>
+  d.innerHTML=`<div><b>${esc(title||'Account created')}</b><p>This is your password. It is shown <b>only once</b>, so save it somewhere safe before you continue.</p>
   <div class="pwbox" id="pwv">${esc(pw)}</div>
   <p class="muted" style="font-size:13px;margin:8px 0 0">Email: ${esc(email)}</p>
   <div class="links"><button type="button" id="pwcopy">Copy password</button></div>
@@ -576,8 +587,27 @@ async function forgot(){
   try{
     const q=/^https?:/.test(location.protocol)?'?redirect_to='+encodeURIComponent(location.origin+location.pathname):'';
     await api('/auth/v1/recover'+q,{method:'POST',body:JSON.stringify({email})});
-    msg('If an account exists for '+email+', we sent a password reset link. Open it on this device to choose a new password. Check spam too.',1);
+    msg('If an account exists for '+email+', we sent a password reset link. Open it, and we will verify your email and give you a new password. If the link shows an error page, paste its address below. Check spam too.',1);$('#paste').hidden=false;
   }catch(x){msg(isNet(x)?NET:(x.status===429||/rate limit/i.test(x.message)?'Please wait a minute before asking for another email.':x.message))}
+}
+function genPw(){const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789',lim=256-(256%A.length),o=[];while(o.length<16)for(const b of crypto.getRandomValues(new Uint8Array(32)))if(b<lim&&o.length<16)o.push(A[b%A.length]);const s=o.join('');return 'Tj-'+s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12)+'-'+s.slice(12)}
+function openRecovery(){
+  const d=$('#dlg');
+  d.innerHTML=`<div><b>Email verified</b><p>Your email is confirmed. How do you want to set your new password?</p><p id="lerr" class="loss" role="alert"></p>
+  <div class="links"><button class="p" type="button" id="rgen">Generate a password for me</button><button type="button" id="rown">I will choose my own</button></div></div>`;
+  if(!d.open)d.showModal();
+  $('#rgen').onclick=async()=>{const pw=genPw();msg('Saving…',1);try{await api('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:pw})},true)}catch(x){return msg(isNet(x)?NET:x.message)}showPassword(user.email,pw,true,'Your new password')};
+  $('#rown').onclick=openNewPw;
+}
+async function usePasted(){
+  const t=($('#plink').value||'').trim(),i=t.indexOf('access_token=');
+  if(i<0)return msg('That does not look like the reset link. Copy the whole address from the address bar.');
+  const h=new URLSearchParams(t.slice(i));
+  setSess({access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),expires_in:+h.get('expires_in')||3600,user:null});
+  try{const u=await api('/auth/v1/user',{},true);user={id:u.id,email:u.email};setSess({access_token:sess.access_token,refresh_token:sess.refresh_token,expires_in:3600,user})}
+  catch(x){setSess(null);user=null;return msg(isNet(x)?NET:'That link has expired or was already used. Request a new one with Forgot password.')}
+  status('Loading…');await pull(true);
+  if(h.get('type')==='recovery')openRecovery();else{$('#dlg').close();render()}
 }
 function openNewPw(){
   const d=$('#dlg');
@@ -611,7 +641,7 @@ async function signOut(){
     try{const u=await api('/auth/v1/user',{},true);user={id:u.id,email:u.email};sess.user=user;setSess({...sess,expires_in:(sess.expires_at-Date.now()/1000)+30});status('Loading…');await pull(fromLink||(dirty?'local':false));if(fromLink&&!recovery)status('Email verified. Saved')}
     catch(x){if(x.status===401||x.status===403){setSess(null);user=null}}
     render();
-    if(recovery&&user)openNewPw();
+    if(recovery&&user)openRecovery();
   }
   if(hashErr){openLogin(hashErr);$('#rs').hidden=false}
 })();
