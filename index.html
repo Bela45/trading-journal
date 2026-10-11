@@ -60,7 +60,7 @@ dialog#dlg2{width:min(760px,97vw);max-height:94vh;overflow:auto}
 .shot{position:relative}.shot img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block}
 .shot button{position:absolute;top:4px;right:4px;min-height:28px;padding:2px 8px;background:var(--card)}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{padding:8px 2px;font-size:15px;font-weight:700;letter-spacing:.2px;flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
+nav button{padding:8px 0;font-size:13px;font-weight:700;letter-spacing:0;flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
 nav button.on{color:var(--acc);font-weight:700;box-shadow:inset 0 3px var(--acc)}
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -111,8 +111,8 @@ const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){
-  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
+  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
@@ -301,6 +301,64 @@ function takeSignal(id){
   $('#tn').value=`Signal (${g.source}): ${g.side} ${g.pair}`+(g.entry!=null?` @ ${n(g.entry)}`:'')+(g.sl!=null?` SL ${n(g.sl)}`:'')+(g.tp!=null?` TP ${n(g.tp)}`:'')+(g.reason?`\n${g.reason}`:'');
   paintBadge();
 }
+let calcPvManual=false;
+const INS={
+  EURUSD:{g:'Forex',u:'pips',pv:10,n:'Standard lot = 100,000 units. 1 pip = 0.0001, about $10 per pip per lot on USD-quote pairs.'},
+  GBPUSD:{g:'Forex',u:'pips',pv:10,n:'Standard lot = 100,000 units. 1 pip = 0.0001, about $10 per pip per lot.'},
+  AUDUSD:{g:'Forex',u:'pips',pv:10,n:'Standard lot = 100,000 units. 1 pip = 0.0001, about $10 per pip per lot.'},
+  NZDUSD:{g:'Forex',u:'pips',pv:10,n:'Standard lot = 100,000 units. 1 pip = 0.0001, about $10 per pip per lot.'},
+  USDJPY:{g:'Forex',u:'pips',px:'USD/JPY price',f:p=>1000/p,n:'1 pip = 0.01 yen = 1,000 yen per lot, converted to dollars with the current USD/JPY price.'},
+  USDCAD:{g:'Forex',u:'pips',px:'USD/CAD price',f:p=>10/p,n:'10 CAD per pip per lot, converted to dollars with the current USD/CAD price.'},
+  USDCHF:{g:'Forex',u:'pips',px:'USD/CHF price',f:p=>10/p,n:'10 CHF per pip per lot, converted to dollars with the current USD/CHF price.'},
+  EURJPY:{g:'Forex',u:'pips',px:'USD/JPY price',f:p=>1000/p,n:'1,000 yen per pip per lot, converted with the current USD/JPY price (not EUR/JPY).'},
+  GBPJPY:{g:'Forex',u:'pips',px:'USD/JPY price',f:p=>1000/p,n:'1,000 yen per pip per lot, converted with the current USD/JPY price (not GBP/JPY).'},
+  XAUUSD:{g:'Metals',u:'pips ($0.10 each)',pv:10,n:'1 lot = 100 oz. Here 1 pip = a $0.10 price move = $10 per lot. Some brokers call $0.01 a pip, so change the value if yours differs.'},
+  US30:{g:'Indices',u:'points',pv:1,n:'Most brokers: 1 lot = $1 per index point. Some use $10, so check the contract specification in MT5 and edit the value.'},
+  NAS100:{g:'Indices',u:'points',pv:1,n:'Often $1 per point per lot, but it varies by broker. Check the contract specification in MT5 and edit the value.'},
+  SPX500:{g:'Indices',u:'points',pv:1,n:'Often $1 per point per lot, but it varies by broker. Check the contract specification in MT5 and edit the value.'},
+  CUSTOM:{g:'Other',u:'pips',pv:10,n:'Type the dollar value of 1 pip (or point) for 1.00 lot from your broker\'s contract specification.'}
+};
+function vCalc(){
+  const c=S.calc||{},sym=INS[c.sym]?c.sym:'XAUUSD',cap=c.cap||(capital()>0?capital():5000);
+  const groups={};Object.keys(INS).forEach(k=>(groups[INS[k].g]=groups[INS[k].g]||[]).push(k));
+  setTimeout(calcUpdate,0);
+  return `<h2>Position calculator</h2><div class="card" id="calc">
+  <label style="margin-top:0">Account capital ($)<input id="c_cap" type="number" inputmode="decimal" step="any" min="0" value="${cap}"></label>
+  <div class="two"><label>Risk per trade (%)<input id="c_risk" type="number" inputmode="decimal" step="any" min="0" value="${c.risk??1}"></label><label>Stop loss in <span id="c_unit">pips</span><input id="c_sl" type="number" inputmode="decimal" step="any" min="0" value="${c.sl??50}"></label></div>
+  <label>Instrument<select id="c_sym">${Object.keys(groups).map(g=>`<optgroup label="${g}">${groups[g].map(k=>`<option value="${k}" ${k===sym?'selected':''}>${k==='XAUUSD'?'XAUUSD (Gold)':k==='US30'?'US30 (Dow)':k==='CUSTOM'?'Custom':k}</option>`).join('')}</optgroup>`).join('')}</select></label>
+  <label id="c_pxrow" hidden><span id="c_pxl">Price</span><input id="c_px" type="number" inputmode="decimal" step="any" min="0" value="${c.px??''}" placeholder="Enter the current price"></label>
+  <label>Value of 1 pip per 1.00 lot ($)<input id="c_pv" type="number" inputmode="decimal" step="any" min="0"></label>
+  <p class="muted" id="c_pvnote" style="font-size:12px;margin:6px 0 0"></p>
+  <div class="two"><label>Take profit (optional)<input id="c_tp" type="number" inputmode="decimal" step="any" min="0" value="${c.tp??''}"></label><label>Your lot size (optional)<input id="c_lot" type="number" inputmode="decimal" step="0.01" min="0" value="${c.lot??''}"></label></div></div>
+  <div id="cout"></div>`;
+}
+function calcUpdate(){
+  const o=$('#cout');if(!o||!$('#c_sym'))return;
+  const g=id=>parseFloat($('#'+id).value),sym=$('#c_sym').value,I=INS[sym];
+  $('#c_unit').textContent=I.u;$('#c_pvnote').textContent=I.n;$('#c_pxrow').hidden=!I.px;if(I.px)$('#c_pxl').textContent=I.px+' (needed to convert to dollars)';
+  if(!calcPvManual){const px=g('c_px');$('#c_pv').value=I.px?(px>0?+I.f(px).toFixed(4):''):I.pv}
+  const cap=g('c_cap'),rk=g('c_risk'),pv=g('c_pv'),sl=g('c_sl'),tp=g('c_tp'),lot0=g('c_lot');
+  if(!(cap>0&&rk>0&&pv>0&&sl>0)){o.innerHTML='<p class="muted">Enter your capital, risk %, stop loss'+(I.px?' and the '+I.px:'')+' to see the lot size.</p>';return}
+  const risk$=cap*rk/100,exact=risk$/(sl*pv),lots=Math.floor(exact*100+1e-9)/100,tooSmall=lots<0.01,use=tooSmall?0.01:lots;
+  const act=use*sl*pv,actPct=act/cap*100;
+  const f2=n=>fm(n),pf=n=>n>=100?n.toFixed(0):n>=10?n.toFixed(1):n.toFixed(2);
+  const L=lot0>0?lot0:use,per=x=>(cap*x/100)/(pv*L);
+  const prc=[...new Set([0.5,1,2,+(S.dl??5),+(S.ol??10)].filter(x=>x>0))].sort((a,b)=>a-b);
+  const lotsTbl=[0.01,0.05,0.1,0.25,0.5,1,2],slTbl=[10,20,30,50,100,200].map(x=>x);
+  const rows=prc.map(x=>`<tr><td>${x}%${x===+(S.dl??5)&&x!==1?' (daily limit)':x===+(S.ol??10)?' (overall limit)':''}</td><td>${f2(cap*x/100)}</td><td><b>${pf(per(x))}</b></td></tr>`).join('');
+  o.innerHTML=`<div class="card"><div class="row"><b>Lot size</b><b style="font-size:22px">${tooSmall?'0.01':lots.toFixed(2)}</b></div>
+  <div class="muted" style="font-size:13px">Risk ${f2(risk$)} (${rk}% of ${f2(cap)}) ÷ (${sl} ${I.u.split(' ')[0]} × ${f2(pv)} per pip per lot) = ${exact.toFixed(3)} lots, rounded down to ${tooSmall?'0.01 (the minimum)':lots.toFixed(2)}.</div>
+  ${tooSmall?`<p class="loss" style="margin:8px 0 0">Your risk is below the smallest lot (0.01). At 0.01 lot the stop loss risks ${f2(act)} (${actPct.toFixed(2)}%). Use a tighter stop or a larger risk %.</p>`:`<div style="margin-top:8px">Real risk with this lot: <b>${f2(act)}</b> (${actPct.toFixed(2)}%)</div>`}
+  ${tp>0?`<div style="margin-top:4px">Take profit ${tp} ${I.u.split(' ')[0]}: <b class="win">+${f2(use*tp*pv)}</b> · Reward : Risk <b>${(tp/sl).toFixed(2)}</b></div>`:''}</div>
+  <div class="card"><b>Pips for each % of capital</b><div class="muted" style="font-size:13px">At <b>${L.toFixed(2)} lots</b>${lot0>0?' (your lot size)':' (the lot size above)'}. 1% of ${f2(cap)} is <b>${f2(cap/100)}</b>, which is <b>${pf(per(1))} ${I.u.split(' ')[0]}</b>.</div>
+  <div style="overflow-x:auto"><table class="lg"><thead><tr><th>Risk</th><th>Amount</th><th>${I.u.split(' ')[0]}</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  <div class="card"><b>Pips that equal 1% (${f2(cap/100)}) by lot size</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>Lots</th><th>${I.u.split(' ')[0]} for 1%</th><th>Per pip</th></tr></thead><tbody>${lotsTbl.map(l=>`<tr><td>${l.toFixed(2)}</td><td><b>${pf((cap/100)/(pv*l))}</b></td><td>${f2(pv*l)}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><b>Lot size for ${rk}% risk by stop loss</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>Stop (${I.u.split(' ')[0]})</th><th>Lots</th></tr></thead><tbody>${slTbl.map(x=>{const l=Math.floor(risk$/(x*pv)*100+1e-9)/100;return `<tr><td>${x}</td><td><b>${l>=0.01?l.toFixed(2):'under 0.01'}</b></td></tr>`}).join('')}</tbody></table></div></div>
+  <p class="muted" style="font-size:12px">Estimates only. Pip and point values differ between brokers and change with price, so check your broker's contract specification before trading.</p>`;
+}
+function saveCalc(){const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.calc={cap:v('c_cap'),risk:v('c_risk'),sl:v('c_sl'),sym:$('#c_sym').value,px:v('c_px'),tp:v('c_tp'),lot:v('c_lot')};save()}
+document.addEventListener('input',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_pv')calcPvManual=true;calcUpdate()});
+document.addEventListener('change',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_sym'){calcPvManual=false;calcUpdate()}saveCalc()});
 function vCap(){
   const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
