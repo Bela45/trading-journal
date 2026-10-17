@@ -41,6 +41,17 @@ dialog#dlg2{width:min(760px,97vw);max-height:94vh;overflow:auto}
 .sw{width:32px;height:32px;min-height:32px;padding:0;border-radius:50%;border:2px solid var(--line)}.sw.on{outline:3px solid var(--acc);outline-offset:1px}
 .szl{display:flex;align-items:center;gap:6px;margin:0;color:var(--mute)}.szl input{width:90px;min-height:0;padding:0}
 .cv canvas{max-width:100%;height:auto;touch-action:none;cursor:crosshair;border:1px solid var(--line);border-radius:8px;display:block}
+.gcv{width:100%;height:auto;display:block;touch-action:pan-y}
+.gcv text{font-size:9px;fill:var(--mute)}
+.gcv .gg{stroke:var(--line);stroke-width:1}
+.gcv .gb{stroke:var(--mute);stroke-dasharray:3 3;stroke-width:1;fill:none}
+.gcv .gf{stroke:var(--loss);stroke-dasharray:4 3;stroke-width:1.2;fill:none}
+.gcv .gl{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.gcv .gl.up{stroke:var(--win)}.gcv .gl.dn{stroke:var(--loss)}
+.gcv .au{fill:var(--win);opacity:.12}.gcv .ad{fill:var(--loss);opacity:.12}
+.gcv .bw{fill:var(--win)}.gcv .bl{fill:var(--loss)}
+.gcv .gd{stroke:var(--card);stroke-width:1}
+.gcv .gm{stroke:var(--acc);stroke-width:1}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -217,7 +228,7 @@ function vCal(){const E=evs(),R=risk(),BD=R?new Set([...R.dayB,R.over].filter(Bo
   }
   const dt=S.trades.filter(t=>t.date===sel),de=E.filter(e=>e.date===sel);
   const td=loc(new Date().toISOString()).date,tE=E.filter(e=>e.date===td).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  return (tE.length?`<div class="card"><b>Today's high-impact news</b> <span class="muted">(${tzName()})</span>${tE.map(e=>`<div><span class="tag hi">${e.cur}</span> ${e.time||'All day'} ${esc(e.title)}</div>`).join('')}</div>`:'')+riskCard()+stats(mt)+`<div class="bar"><button data-m="-1" aria-label="Previous month">‹</button><b>${cur.toLocaleString('en',{month:'long',year:'numeric'})}</b><button data-m="1" aria-label="Next month">›</button></div><div class="grid">${cells}</div>
+  return (tE.length?`<div class="card"><b>Today's high-impact news</b> <span class="muted">(${tzName()})</span>${tE.map(e=>`<div><span class="tag hi">${e.cur}</span> ${e.time||'All day'} ${esc(e.title)}</div>`).join('')}</div>`:'')+riskCard()+stats(mt)+growthCard()+`<div class="bar"><button data-m="-1" aria-label="Previous month">‹</button><b>${cur.toLocaleString('en',{month:'long',year:'numeric'})}</b><button data-m="1" aria-label="Next month">›</button></div><div class="grid">${cells}</div>
   <div class="bar"><h2>${sel}</h2><span><button data-shot="1">📷 Screenshot</button> <button class="p" data-add="1">Add trade</button></span></div>
   ${noteCard(sel)}${de.map(evCard).join('')}${shotGrid(sel)}${dt.map(tradeCard).join('')||'<p class="muted">No trades logged. Tap Add trade to log one for this day.</p>'}`;
 }
@@ -359,6 +370,67 @@ function calcUpdate(){
 function saveCalc(){const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.calc={cap:v('c_cap'),risk:v('c_risk'),sl:v('c_sl'),sym:$('#c_sym').value,px:v('c_px'),tp:v('c_tp'),lot:v('c_lot')};save()}
 document.addEventListener('input',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_pv')calcPvManual=true;calcUpdate()});
 document.addEventListener('change',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_sym'){calcPvManual=false;calcUpdate()}saveCalc()});
+let grMode='m',grLim=true,grPts=[];
+const GW=360,GL=46,GR=8;
+const tk=n=>{const a=Math.abs(n);return (n<0?'−':'')+'$'+(a>=1000?(a/1000).toFixed(a>=10000?0:1)+'k':Math.round(a))};
+const shortD=d=>new Date(d+'T00:00').toLocaleDateString('en',{month:'short',day:'numeric'});
+function growth(){
+  const b=capital(),byDay={};S.trades.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.pnl);
+  const dl=Object.keys(byDay).sort();if(!dl.length)return null;
+  const today=iso(new Date());let from,to;
+  if(grMode==='a'){from=dl[0];to=dl[dl.length-1]>today?dl[dl.length-1]:today}
+  else{const y=cur.getFullYear(),m=cur.getMonth();from=iso(new Date(y,m,1));const last=iso(new Date(y,m+1,0));to=last<today?last:today}
+  const start=dl[0]<from?dl[0]:from,days=[];
+  for(const t=new Date(start+'T00:00');iso(t)<=to;t.setDate(t.getDate()+1))days.push(iso(t));
+  const ol=b*(+(S.ol??10))/100,tr=S.olt==='trailing';let bal=b,peak=b;const all=[];
+  for(const d of days){const p=byDay[d]||0;bal+=p;peak=Math.max(peak,bal);all.push({d,p,bal,floor:(tr?peak:b)-ol})}
+  const before=all.filter(x=>x.d<from),pts=all.filter(x=>x.d>=from);
+  return{pts,base:before.length?before[before.length-1].bal:b,b};
+}
+function growthCard(){
+  const G=growth(),mo=cur.toLocaleString('en',{month:'long',year:'numeric'});
+  const chips=`<div class="chips" style="margin:0"><button class="${grMode==='m'?'on':''}" data-gm="m">${mo}</button><button class="${grMode==='a'?'on':''}" data-gm="a">All time</button>${capital()>0?`<button class="${grLim?'on':''}" data-gl="1">Loss limit</button>`:''}</div>`;
+  const title=capital()>0?'Account growth':'Profit curve';
+  if(!G||!G.pts.length){grPts=[];return `<div class="card"><div class="row"><b>${title}</b></div>${chips}<p class="muted" style="margin:8px 0 0">${G?'No data for this month yet.':'Log trades and your growth curve will appear here.'}</p></div>`}
+  const {pts,base,b}=G,n=pts.length,vals=pts.map(x=>x.bal).concat([base]);
+  if(b>0){vals.push(b);if(grLim)pts.forEach(x=>vals.push(x.floor))}
+  let lo=Math.min(...vals),hi=Math.max(...vals);if(hi-lo<1e-9){hi+=1;lo-=1}const pad=(hi-lo)*.08;lo-=pad;hi+=pad;
+  const T=10,CH=104,BT=T+CH+12,BH=34,BM=BT+BH/2,H=BT+BH+22,PW=GW-GL-GR;
+  const X=i=>GL+(n>1?PW*i/(n-1):PW/2),Y=v=>T+CH*(1-(v-lo)/(hi-lo));
+  const line=pts.map((x,i)=>X(i).toFixed(1)+','+Y(x.bal).toFixed(1)).join(' ');
+  const end=pts[n-1].bal,up=end>=base,ticks=[lo+pad,(lo+hi)/2,hi-pad];
+  const maxAbs=Math.max(...pts.map(x=>Math.abs(x.p)),1),bw=Math.max(2,Math.min(14,PW/n*.6));
+  const bars=n<=92?pts.map((x,i)=>x.p?`<rect class="${x.p>0?'bw':'bl'}" x="${(X(i)-bw/2).toFixed(1)}" y="${(x.p>0?BM-x.p/maxAbs*BH/2:BM).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(x.p)/maxAbs*BH/2).toFixed(1)}"/>`:'').join(''):'';
+  const dots=n<=92?pts.map((x,i)=>x.p?`<circle cx="${X(i).toFixed(1)}" cy="${Y(x.bal).toFixed(1)}" r="2.6" class="gd ${x.p>0?'bw':'bl'}"/>`:'').join(''):'';
+  const lab=i=>grMode==='m'?String(+pts[i].d.slice(8)):shortD(pts[i].d);
+  const mid=Math.floor((n-1)/2);
+  const area=`${X(0).toFixed(1)},${(T+CH).toFixed(1)} ${line} ${X(n-1).toFixed(1)},${(T+CH).toFixed(1)}`;
+  const floorLine=b>0&&grLim?`<polyline class="gf" points="${pts.map((x,i)=>X(i).toFixed(1)+','+Y(x.floor).toFixed(1)).join(' ')}"/><text x="${GW-GR}" y="${(Y(pts[n-1].floor)-3).toFixed(1)}" text-anchor="end" style="fill:var(--loss)">breach ${tk(pts[n-1].floor)}</text>`:'';
+  const baseLine=b>0?`<line class="gb" x1="${GL}" x2="${GW-GR}" y1="${Y(b).toFixed(1)}" y2="${Y(b).toFixed(1)}"/>`:'';
+  grPts=pts;
+  // stats
+  const ps=pts.filter(x=>x.p),best=ps.length?ps.reduce((a,x)=>x.p>a.p?x:a):null,worst=ps.length?ps.reduce((a,x)=>x.p<a.p?x:a):null;
+  let pk=base,dd=0;pts.forEach(x=>{pk=Math.max(pk,x.bal);if(pk>0)dd=Math.max(dd,(pk-x.bal)/pk*100)});
+  const ch=end-base,st=(a,v,k)=>`<div class="stat"><small>${a}</small><b class="${k||''}" style="font-size:15px">${v}</b></div>`;
+  return `<div class="card"><div class="row"><b>${title}</b><span class="muted" style="font-size:13px">${b>0?'Balance':'Cumulative P&amp;L'}</span></div>${chips}
+  <svg id="grsvg" class="gcv" viewBox="0 0 ${GW} ${H}" role="img" aria-label="${title} chart" style="margin-top:6px">
+   ${ticks.map(v=>`<line class="gg" x1="${GL}" x2="${GW-GR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text x="${GL-4}" y="${(Y(v)+3).toFixed(1)}" text-anchor="end">${tk(v)}</text>`).join('')}
+   ${baseLine}${floorLine}
+   <polygon class="${up?'au':'ad'}" points="${area}"/><polyline class="gl ${up?'up':'dn'}" points="${line}"/>${dots}
+   <line class="gg" x1="${GL}" x2="${GW-GR}" y1="${BM}" y2="${BM}"/>${bars}
+   <text x="${GL}" y="${H-6}" text-anchor="start">${lab(0)}</text><text x="${X(mid).toFixed(1)}" y="${H-6}" text-anchor="middle">${n>2?lab(mid):''}</text><text x="${GW-GR}" y="${H-6}" text-anchor="end">${n>1?lab(n-1):''}</text>
+   <line class="gm" id="grm" x1="0" x2="0" y1="${T}" y2="${BT+BH}" style="display:none"/></svg>
+  <div class="muted" id="grtip" style="font-size:13px;min-height:19px">Tap or slide on the chart to see a day. Bars show each day's result.</div>
+  <div class="stats" style="margin:8px 0 0">${st('Change',money(ch)+(b>0?' ('+pc(ch/b*100,2)+')':''),cls(ch))}${st('Best day',best?money(best.p):'–','win')}${st('Worst day',worst&&worst.p<0?money(worst.p):'–','loss')}${st('Max drawdown',dd?'−'+dd.toFixed(2)+'%':'0%',dd>=5?'loss':'')}</div></div>`;
+}
+function grTip(e,s){
+  const n=grPts.length;if(!n)return;const r=s.getBoundingClientRect(),vx=(e.clientX-r.left)*GW/(r.width||GW);
+  const i=Math.max(0,Math.min(n-1,Math.round((vx-GL)/(GW-GL-GR)*(n-1)||0))),x=grPts[i],px=GL+(n>1?(GW-GL-GR)*i/(n-1):(GW-GL-GR)/2);
+  const m=$('#grm');if(m){m.setAttribute('x1',px);m.setAttribute('x2',px);m.style.display=''}
+  const t=$('#grtip');if(t)t.textContent=`${shortD(x.d)} · balance ${fm(x.bal)} · day ${x.p?money(x.p):'no trades'}`;
+}
+document.addEventListener('pointerdown',e=>{const s=e.target.closest&&e.target.closest('#grsvg');if(s)grTip(e,s)});
+document.addEventListener('pointermove',e=>{const s=e.target.closest&&e.target.closest('#grsvg');if(s)grTip(e,s)});
 function vCap(){
   const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
@@ -447,12 +519,14 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
+  else if(D.gm){grMode=D.gm}
+  else if(D.gl){grLim=!grLim}
   else if(D.nv){nwv=D.nv;if(nwv==='sg')loadSigs()}
   else if(D.fk)return makeKey();
   else if(D.cpk){navigator.clipboard.writeText(feedKey).then(()=>{fkMsg='Copied ✓ Save it now, it will not be shown again.';render()}).catch(()=>{fkMsg='Select the key above and copy it.';render()});return}
