@@ -52,6 +52,35 @@ dialog#dlg2{width:min(760px,97vw);max-height:94vh;overflow:auto}
 .gcv .bw{fill:var(--win)}.gcv .bl{fill:var(--loss)}
 .gcv .gd{stroke:var(--card);stroke-width:1}
 .gcv .gm{stroke:var(--acc);stroke-width:1}
+
+body[data-gate=home] main,body[data-gate=home] nav,body[data-gate=load] main,body[data-gate=load] nav{display:none}
+body[data-gate=app] #home,body[data-gate=load] #home,body[data-gate=app] #boot,body[data-gate=home] #boot{display:none}
+#boot{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--mute)}
+#home{max-width:1040px;margin:0 auto;padding:12px 16px 40px}
+.hb{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 8px}
+.brand{display:flex;align-items:center;gap:10px;font-size:16px}
+.mk{width:34px;height:34px;border-radius:9px;background:var(--ink);display:grid;place-items:center}
+.mk svg{width:20px;height:20px;fill:none;stroke:var(--win);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.hbr{display:flex;gap:8px}
+.hero{display:grid;gap:28px;padding:28px 0 12px;align-items:center}
+#home h1{font-size:clamp(32px,8vw,54px);line-height:1.04;letter-spacing:-.025em;margin:0 0 14px;font-weight:700;max-width:15em}
+#home h2{font-size:20px;letter-spacing:-.01em;margin:0 0 10px}
+.lead{font-size:17px;line-height:1.5;color:var(--mute);margin:0 0 20px;max-width:34em}
+.hcta{display:flex;flex-wrap:wrap;gap:10px}
+button.big{min-height:48px;padding:10px 22px;font-size:16px;font-weight:600;border-radius:10px}
+.hnote{font-size:13px;color:var(--mute);margin:10px 0 0}
+.prev{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px}
+.pm{display:grid;gap:4px;font-size:14px}
+.pc{width:100%;height:auto;display:block}.pb{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3}.pa{fill:var(--win);opacity:.13}.pl{fill:none;stroke:var(--win);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.fill{transform-origin:left;animation:fillin 1s ease-out both}@keyframes fillin{from{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.fill{animation:none}}
+.hsec{padding:30px 0 0}
+.fl{list-style:none;margin:0;padding:0;display:grid;gap:0 32px}
+.fl li{display:grid;gap:3px;padding:14px 0;border-top:1px solid var(--line)}
+.fl b{font-size:16px}.fl span{color:var(--mute);line-height:1.45;max-width:36em}
+.st{margin:0;padding:0 0 0 22px;display:grid;gap:10px;line-height:1.45}.st li::marker{font-weight:700;color:var(--acc)}
+.hf{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+@media(min-width:820px){.hero{grid-template-columns:1.1fr .9fr;gap:48px;padding-top:56px}.fl{grid-template-columns:1fr 1fr}.hsec{padding-top:56px}}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -82,7 +111,40 @@ input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--lin
 a{color:var(--acc)}.links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .links a{border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;background:var(--card)}
 .note{font-size:13px;color:var(--mute);background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:8px 0}
-</style></head><body><main>
+</style></head><body data-gate="load">
+<div id="boot" role="status">Loading your journal…</div>
+<div id="home">
+ <header class="hb"><div class="brand"><span class="mk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/></svg></span><b>Trading Journal</b></div><span class="hbr"><button id="theme2" aria-label="Toggle theme">Theme</button><button class="p" data-hs="1">Sign in</button></span></header>
+ <section class="hero">
+  <div class="ht">
+   <h1>Log every trade. Stay inside your prop firm limits.</h1>
+   <p class="lead">A trading journal for forex, gold and index traders. Enter your results and it works out your balance, your daily loss and your overall loss for you.</p>
+   <div class="hcta"><button class="p big" data-hs="1">Sign in</button><button class="big" data-hc="1">Create account</button></div>
+   <p class="hnote">New here? Create an account with just your email. We give you a password.</p>
+  </div>
+  <div class="prev" role="img" aria-label="Example of the loss limit meters and balance curve">
+   <div class="row"><b>Example day</b><b class="win">Safe</b></div>
+   <div class="pm"><div class="row"><span>Daily loss</span><span>$120 of $500</span></div><div class="bar2"><i class="fill" style="width:24%;background:var(--win)"></i></div></div>
+   <div class="pm"><div class="row"><span>Overall loss</span><span>$310 of $1,000</span></div><div class="bar2"><i class="fill" style="width:31%;background:var(--win)"></i></div></div>
+   <svg viewBox="0 0 300 96" class="pc" aria-hidden="true"><line x1="0" x2="300" y1="78" y2="78" class="pb"/><polygon points="0,96 0,70 30,62 55,68 85,48 110,55 140,34 170,42 200,24 235,30 265,14 300,18 300,96" class="pa"/><polyline points="0,70 30,62 55,68 85,48 110,55 140,34 170,42 200,24 235,30 265,14 300,18" class="pl"/></svg>
+   <div class="muted" style="font-size:12px">Sample data. Your own numbers appear after you sign in.</div>
+  </div>
+ </section>
+ <section class="hsec"><h2>What you get</h2>
+  <ul class="fl">
+   <li><b>Calendar journal</b><span>Every day shows its profit or loss. Add notes, emoji and screenshots you can draw on.</span></li>
+   <li><b>Loss limits</b><span>Set your daily and overall limits. See how much is left and get a warning before you breach.</span></li>
+   <li><b>Position calculator</b><span>Lot size for gold, US30 and forex, and how many pips equal 1% of your capital.</span></li>
+   <li><b>Growth graph</b><span>Your balance curve, best and worst day, and your biggest drawdown.</span></li>
+   <li><b>News and signals</b><span>High-impact events for the major currencies, and a feed for signals from your automation.</span></li>
+   <li><b>On every device</b><span>Sign in on your phone or computer and your journal is already there.</span></li>
+  </ul></section>
+ <section class="hsec"><h2>Start in three steps</h2>
+  <ol class="st"><li><b>Create your account.</b> Type your email and we generate your password.</li><li><b>Enter your capital and results.</b> Add each day's result, or log a full trade.</li><li><b>Check your limits before you trade.</b> The calendar and calculator do the maths.</li></ol>
+  <div class="hcta" style="margin-top:16px"><button class="p big" data-hs="1">Sign in</button><button class="big" data-hc="1">Create account</button></div></section>
+ <footer class="hf">Estimates only, not financial advice. Trading involves risk.</footer>
+</div>
+<main>
 <div class="bar"><h1>Trading Journal</h1><span class="acc"><span id="acct"></span><button id="theme" aria-label="Toggle theme">Theme</button></span></div>
 <div id="view"></div></main>
 <nav id="nav"></nav>
@@ -121,7 +183,7 @@ const moneyC=n=>{const a=Math.abs(n);return (n>=0?'+':'−')+'$'+(a>=1000?(a/100
 const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
-function render(){
+function render(){gate();
   $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
   $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
 }
@@ -519,12 +581,14 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
+  else if(D.hs)return openLogin();
+  else if(D.hc){openLogin();msg('New here? Type your email and tap Create account.',1);return}
   else if(D.gm){grMode=D.gm}
   else if(D.gl){grLim=!grLim}
   else if(D.nv){nwv=D.nv;if(nwv==='sg')loadSigs()}
@@ -598,6 +662,8 @@ document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.v
 const SB_URL='https://fbmtvcdgdrfmpgstgtns.supabase.co',SB_KEY='sb_publishable_V069cMMupLfikudhqr8PEw_2VToLMte';
 let recovery=false,user=null,sync='',pt,busy=false,again=false,dirty=(()=>{try{return localStorage.getItem('tjd')==='1'}catch(e){return false}})(),sess=null,hashErr='',fromLink=false;
 try{sess=JSON.parse(localStorage.getItem('tjs'))}catch(e){}
+let booting=!!sess;
+function gate(){document.body.dataset.gate=user?'app':booting?'load':'home';if(user)scrollTo(0,0)}
 const NET='Cannot reach Supabase from this page. If you are viewing it inside claude.ai, download the file and open it in your browser, or use your hosted link.';
 const isNet=x=>!!x&&x.name==='TypeError';
 function setSess(r){
@@ -620,7 +686,7 @@ async function api(path,opt={},auth=false){
 function syncCard(){return `<div class="card"><b>Cloud sync</b><div class="muted" id="syncst">${user?esc(user.email)+' · '+esc(sync||'Saved'):'Not signed in. Your data is only on this device.'}</div><div class="links">${user?'<button data-chpw="1">Change password</button><button data-so="1">Sign out</button>':'<button class="p" data-login="1">Sign in</button>'}</div></div>`}
 function paintAcct(){const a=$('#acct');if(!a)return;a.innerHTML=user?`<small class="muted" id="hst">${esc(sync||'Saved')}</small><button data-so="1">Sign out</button>`:'<button class="p" data-login="1">Sign in</button>'}
 function status(m){sync=m;const e=$('#syncst');if(e)e.textContent=(user?user.email+' · ':'')+m;const h=$('#hst');if(h)h.textContent=m}
-function expire(){user=null;setSess(null);paintAcct();openLogin('Your session expired. Please sign in again.')}
+function expire(){user=null;setSess(null);gate();paintAcct();openLogin('Your session expired. Please sign in again.')}
 const tomb=(...ids)=>{S.del=S.del||{};ids.forEach(i=>S.del[i]=1)};
 function mergeData(c,l){
   const del={...(c.del||{}),...(l.del||{})};
@@ -692,7 +758,7 @@ async function signupAuto(email){
   try{r=await api('/functions/v1/signup',{method:'POST',body:JSON.stringify({email})})}
   catch(x){return msg(isNet(x)?NET:x.message)}
   let ok=false;
-  try{const t=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:r.email,password:r.password})});setSess(t);user=sess.user;ok=true}catch(x){}
+  try{const t=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:r.email,password:r.password})});setSess(t);user=sess.user;ok=true;gate()}catch(x){}
   showPassword(r.email,r.password,ok);
 }
 function showPassword(email,pw,ok,title){
@@ -737,7 +803,7 @@ async function landSession(r,type){
   setSess({access_token:r.access_token,refresh_token:r.refresh_token,expires_in:r.expires_in||3600,user:null});
   try{const u=await api('/auth/v1/user',{},true);user={id:u.id,email:u.email};setSess({access_token:sess.access_token,refresh_token:sess.refresh_token,expires_in:3600,user})}
   catch(x){setSess(null);user=null;return msg(isNet(x)?NET:'That link or code has expired or was already used. Request a new one with Forgot password.')}
-  status('Loading…');await pull(true);
+  gate();status('Loading…');await pull(true);
   if(type==='recovery')openRecovery();else{$('#dlg').close();render()}
 }
 async function usePasted(){
@@ -792,10 +858,11 @@ async function signOut(){
 (async()=>{
   if(sess){
     try{const u=await api('/auth/v1/user',{},true);user={id:u.id,email:u.email};sess.user=user;setSess({...sess,expires_in:(sess.expires_at-Date.now()/1000)+30});status('Loading…');await pull(fromLink||(dirty?'local':false));if(fromLink&&!recovery)status('Email verified. Saved')}
-    catch(x){if(x.status===401||x.status===403){setSess(null);user=null}}
+    catch(x){if(x.status===401||x.status===403){setSess(null);user=null}else if(isNet(x)&&sess&&sess.user)user=sess.user}
     render();
     if(recovery&&user)openRecovery();
   }
+  booting=false;gate();
   if(hashErr){openLogin(hashErr);$('#rs').hidden=false}
 })();
 setInterval(()=>{if(user&&!document.hidden)loadSigs()},45000);
@@ -803,5 +870,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push
 addEventListener('pagehide',()=>{if(dirty)push()});
 addEventListener('online',()=>{if(dirty)push()});
 $('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
+$('#theme2').onclick=$('#theme').onclick;
 load();render();
 </script></body></html>
