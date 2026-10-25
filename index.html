@@ -30,7 +30,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .qf{display:grid;grid-template-columns:1fr 1.2fr auto;gap:8px;margin-top:8px}
 .lg{width:100%;border-collapse:collapse;font-size:13px}.lg th,.lg td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}.lg th:first-child,.lg td:first-child{text-align:left}.lg button{min-height:28px;padding:0 8px}
 .pwbox{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;padding:14px 10px;border:2px dashed var(--acc);border-radius:10px;text-align:center;background:var(--bg);user-select:all;word-break:break-all;margin-top:8px}
-nav button{position:relative;white-space:nowrap}nav .bdg{position:absolute;top:4px;right:4px;margin:0;min-width:16px;line-height:16px;font-size:10px}
+nav::-webkit-scrollbar{display:none}nav button{position:relative;white-space:nowrap}nav .bdg{position:absolute;top:4px;right:4px;margin:0;min-width:16px;line-height:16px;font-size:10px}
 .bdg{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:99px;background:var(--loss);color:#fff;font-size:11px;line-height:18px;vertical-align:middle}
 pre.code{overflow-x:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;margin:0;white-space:pre}
 .emo{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.emo button{min-height:36px;padding:2px 8px;font-size:18px;line-height:1}
@@ -81,6 +81,9 @@ button.big{min-height:48px;padding:10px 22px;font-size:16px;font-weight:600;bord
 .st{margin:0;padding:0 0 0 22px;display:grid;gap:10px;line-height:1.45}.st li::marker{font-weight:700;color:var(--acc)}
 .hf{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
 @media(min-width:820px){.hero{grid-template-columns:1.1fr .9fr;gap:48px;padding-top:56px}.fl{grid-template-columns:1fr 1fr}.hsec{padding-top:56px}}
+nav::-webkit-scrollbar{display:none}
+.gl2{margin:6px 0 0;padding-left:18px;display:grid;gap:8px;line-height:1.45}
+dialog .row{flex-wrap:wrap;gap:8px}dialog .row>span{display:flex;gap:8px;flex-wrap:wrap}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -99,8 +102,8 @@ button.big{min-height:48px;padding:10px 22px;font-size:16px;font-weight:600;bord
 .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:8px}
 .shot{position:relative}.shot img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;display:block}
 .shot button{position:absolute;top:4px;right:4px;min-height:28px;padding:2px 8px;background:var(--card)}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{padding:8px 0;font-size:13px;font-weight:700;letter-spacing:0;flex:1;max-width:190px;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;overflow-x:auto;scrollbar-width:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{padding:8px 2px;font-size:12px;font-weight:700;letter-spacing:0;flex:1 0 auto;border:0;border-radius:0;background:none;min-height:52px;color:var(--mute)}
 nav button.on{color:var(--acc);font-weight:700;box-shadow:inset 0 3px var(--acc)}
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.5)}
@@ -184,8 +187,8 @@ const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){gate();
-  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
+  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc'],['grow','Grow']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc,grow:vGrow})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
@@ -197,7 +200,7 @@ function evCard(e){return `<div class="card row"><div><span class="tag hi">High<
 const capital=()=>(+S.bal||0)+(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
 function risk(){
   const b=capital();if(b<=0)return null;
-  const dl=+(S.dl??5),ol=+(S.ol??10),tr=S.olt==='trailing',dLim=b*dl/100,oLim=b*ol/100;
+  const dl=isProp()?+(S.dl??5):0,ol=isProp()?+(S.ol??10):0,tr=S.olt==='trailing',dLim=b*dl/100,oLim=b*ol/100;
   const byDay={};S.trades.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.pnl);
   let bal=b,peak=b,over='';const dayB=[],log=[];
   for(const d of Object.keys(byDay).sort()){
@@ -205,14 +208,17 @@ function risk(){
     bal+=p;peak=Math.max(peak,bal);
     if(ol>0&&!over&&bal<=(tr?peak:b)-oLim+1e-9)over=d;
     const down=Math.max(0,(tr?peak:b)-bal);
-    log.push({d,p,bal,pct:p/b*100,dl:dLim?Math.max(0,-p)/dLim*100:0,od:oLim?down/oLim*100:0,hit:dl>0&&-p>=dLim-1e-9,br:over===d,q:S.trades.some(t=>t.date===d&&t.pair==='Daily P&L')});
+    log.push({d,p,bal,dd:peak>0?(peak-bal)/peak*100:0,pct:p/b*100,dl:dLim?Math.max(0,-p)/dLim*100:0,od:oLim?down/oLim*100:0,hit:dl>0&&-p>=dLim-1e-9,br:over===d,q:S.trades.some(t=>t.date===d&&t.pair==='Daily P&L')});
   }
   const tp=byDay[iso(new Date())]||0,floor=(tr?peak:b)-oLim;
-  return{log,b,dl,ol,dLim,oLim,tr,bal,peak,floor,byDay,dayB,over,tp,dUsed:Math.max(0,-tp),oUsed:Math.max(0,(tr?peak:b)-bal)};
+  return{personal:!isProp(),log,b,dl,ol,dLim,oLim,tr,bal,peak,floor,byDay,dayB,over,tp,dUsed:Math.max(0,-tp),oUsed:Math.max(0,(tr?peak:b)-bal)};
 }
 function riskCard(){
   const r=risk();
-  if(!r)return `<div class="note">Enter your prop firm account capital in the Journal tab to track your daily and overall loss limits.</div>`;
+  if(!r)return `<div class="note">Enter your account capital in the Capital tab to track your balance${isProp()?' and your daily and overall loss limits':''}.</div>`;
+  if(r.personal){const fp=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),net=r.bal-r.b,dd=r.peak>0?(r.peak-r.bal)/r.peak*100:0;
+    return `<div class="card"><div class="row"><b>Account summary</b><b class="${cls(net)}">${pc(net/r.b*100,2)}</b></div><div class="muted">${S.cat==='micro'?'Micro':'Standard'} account · personal capital</div>
+    <div class="row" style="margin-top:8px"><span>Balance</span><b>${fp(r.bal)}</b></div><div class="row"><span>Capital</span><span>${fp(r.b)}</span></div><div class="row"><span>Peak balance</span><span>${fp(r.peak)}</span></div><div class="row"><span>Down from peak</span><b class="${dd>0?'loss':''}">${dd?'−'+dd.toFixed(2)+'%':'0%'}</b></div></div>`}
   const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dp=r.dLim?r.dUsed/r.dLim*100:0,op=r.oLim?r.oUsed/r.oLim*100:0,mx=Math.max(dp,op);
   const col=p=>p>=100?'var(--loss)':p>=70?'var(--warn,#d98a00)':'var(--win)';
@@ -301,10 +307,12 @@ function qPrev(){
   if(!r){e.textContent='Set your starting capital above first.';return}
   if(isNaN(a)){e.textContent='';return}
   const day=(r.byDay[d]||0)+a,lim=r.dLim?Math.max(0,-day)/r.dLim*100:0;
-  e.textContent=`Day total ${money(day)} (${pc(day/r.b*100,2)} of capital, ${lim.toFixed(0)}% of daily limit) · balance after ${fm(r.bal+a)}`;
+  e.textContent=`Day total ${money(day)} (${pc(day/r.b*100,2)} of capital${r.personal?'':', '+lim.toFixed(0)+'% of daily limit'}) · balance after ${fm(r.bal+a)}`;
 }
 function dailyLog(){
   const r=risk();if(!r||!r.log.length)return '';
+  if(r.personal){const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.dd>0?'loss':''}">${x.dd?'−'+x.dd.toFixed(1)+'%':'0%'}</td><td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
+    return `<h2>Daily log</h2><div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Down from peak</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`}
   const col=p=>p>=100?'loss':p>=70?'':'win';
   const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.hit?'loss':col(x.dl)}">${x.dl.toFixed(0)}%${x.hit?' ⚠':''}</td><td class="${x.br?'loss':col(x.od)}">${x.od.toFixed(0)}%${x.br?' ⛔':''}</td><td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
   return `<h2>Daily log</h2><div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Daily limit used</th><th>Overall limit used</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -314,7 +322,7 @@ document.addEventListener('submit',e=>{
   const d=$('#qd').value,a=parseFloat($('#qa').value);if(!d||isNaN(a)||a===0)return;
   S.trades.push({id:Date.now()+'',date:d,pair:'Daily P&L',side:'Net',pnl:a,notes:'',img:''});
   qDate=d;sel=d;save();
-  const R2=risk();if(R2&&(R2.over||-(R2.byDay[d]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Stop trading and check the Prop firm limits card.';
+  const R2=risk();if(R2&&!R2.personal&&(R2.over||-(R2.byDay[d]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Stop trading and check the Prop firm limits card.';
   render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='qa'||e.target.id==='qd')qPrev()});
@@ -402,36 +410,37 @@ function vCalc(){
   <label id="c_pxrow" hidden><span id="c_pxl">Price</span><input id="c_px" type="number" inputmode="decimal" step="any" min="0" value="${c.px??''}" placeholder="Enter the current price"></label>
   <label>Value of 1 pip per 1.00 lot ($)<input id="c_pv" type="number" inputmode="decimal" step="any" min="0"></label>
   <p class="muted" id="c_pvnote" style="font-size:12px;margin:6px 0 0"></p>
-  <div class="two"><label>Take profit (optional)<input id="c_tp" type="number" inputmode="decimal" step="any" min="0" value="${c.tp??''}"></label><label>Your lot size (optional)<input id="c_lot" type="number" inputmode="decimal" step="0.01" min="0" value="${c.lot??''}"></label></div></div>
+  <div class="two"><label>Take profit (optional)<input id="c_tp" type="number" inputmode="decimal" step="any" min="0" value="${c.tp??''}"></label><label>Your lot size (optional)<input id="c_lot" type="number" inputmode="decimal" step="0.01" min="0" value="${c.lot??''}"></label></div>
+  <div class="two"><label>Account category<select id="c_cat"><option value="standard" ${S.cat!=='micro'?'selected':''}>Standard (100,000 units)</option><option value="micro" ${S.cat==='micro'?'selected':''}>Micro (1,000 units)</option></select></label><label>Minimum lot<input id="c_min" type="number" inputmode="decimal" step="0.01" min="0" value="${c.min??0.01}"></label></div></div>
   <div id="cout"></div>`;
 }
 function calcUpdate(){
   const o=$('#cout');if(!o||!$('#c_sym'))return;
   const g=id=>parseFloat($('#'+id).value),sym=$('#c_sym').value,I=INS[sym];
-  $('#c_unit').textContent=I.u;$('#c_pvnote').textContent=I.n;$('#c_pxrow').hidden=!I.px;if(I.px)$('#c_pxl').textContent=I.px+' (needed to convert to dollars)';
-  if(!calcPvManual){const px=g('c_px');$('#c_pv').value=I.px?(px>0?+I.f(px).toFixed(4):''):I.pv}
-  const cap=g('c_cap'),rk=g('c_risk'),pv=g('c_pv'),sl=g('c_sl'),tp=g('c_tp'),lot0=g('c_lot');
+  $('#c_unit').textContent=I.u;$('#c_pvnote').textContent=I.n+(S.cat==='micro'?(I.g==='Forex'?' Micro account: 1 lot = 1,000 units, so each pip is worth 1/100 of a standard lot.':I.g==='Other'?'':' Micro contract sizes for metals and indices can differ by broker. This uses the standard value, which gives a smaller, safer lot. Check MT5 and edit it.'):'');$('#c_pxrow').hidden=!I.px;if(I.px)$('#c_pxl').textContent=I.px+' (needed to convert to dollars)';
+  const mf=I.g==='Forex'?microF():1;if(!calcPvManual){const px=g('c_px');$('#c_pv').value=I.px?(px>0?+(I.f(px)*mf).toFixed(4):''):+(I.pv*mf).toFixed(4)}
+  const cap=g('c_cap'),rk=g('c_risk'),pv=g('c_pv'),sl=g('c_sl'),tp=g('c_tp'),lot0=g('c_lot'),mn=g('c_min')>0?g('c_min'):0.01;
   if(!(cap>0&&rk>0&&pv>0&&sl>0)){o.innerHTML='<p class="muted">Enter your capital, risk %, stop loss'+(I.px?' and the '+I.px:'')+' to see the lot size.</p>';return}
-  const risk$=cap*rk/100,exact=risk$/(sl*pv),lots=Math.floor(exact*100+1e-9)/100,tooSmall=lots<0.01,use=tooSmall?0.01:lots;
+  const risk$=cap*rk/100,exact=risk$/(sl*pv),lots=Math.floor(exact*100+1e-9)/100,tooSmall=lots<mn,use=tooSmall?mn:lots;
   const act=use*sl*pv,actPct=act/cap*100;
   const f2=n=>fm(n),pf=n=>n>=100?n.toFixed(0):n>=10?n.toFixed(1):n.toFixed(2);
   const L=lot0>0?lot0:use,per=x=>(cap*x/100)/(pv*L);
-  const prc=[...new Set([0.5,1,2,+(S.dl??5),+(S.ol??10)].filter(x=>x>0))].sort((a,b)=>a-b);
+  const prc=[...new Set([0.5,1,2,isProp()?+(S.dl??5):5,isProp()?+(S.ol??10):10].filter(x=>x>0))].sort((a,b)=>a-b);
   const lotsTbl=[0.01,0.05,0.1,0.25,0.5,1,2],slTbl=[10,20,30,50,100,200].map(x=>x);
-  const rows=prc.map(x=>`<tr><td>${x}%${x===+(S.dl??5)&&x!==1?' (daily limit)':x===+(S.ol??10)?' (overall limit)':''}</td><td>${f2(cap*x/100)}</td><td><b>${pf(per(x))}</b></td></tr>`).join('');
-  o.innerHTML=`<div class="card"><div class="row"><b>Lot size</b><b style="font-size:22px">${tooSmall?'0.01':lots.toFixed(2)}</b></div>
-  <div class="muted" style="font-size:13px">Risk ${f2(risk$)} (${rk}% of ${f2(cap)}) ÷ (${sl} ${I.u.split(' ')[0]} × ${f2(pv)} per pip per lot) = ${exact.toFixed(3)} lots, rounded down to ${tooSmall?'0.01 (the minimum)':lots.toFixed(2)}.</div>
-  ${tooSmall?`<p class="loss" style="margin:8px 0 0">Your risk is below the smallest lot (0.01). At 0.01 lot the stop loss risks ${f2(act)} (${actPct.toFixed(2)}%). Use a tighter stop or a larger risk %.</p>`:`<div style="margin-top:8px">Real risk with this lot: <b>${f2(act)}</b> (${actPct.toFixed(2)}%)</div>`}
+  const rows=prc.map(x=>`<tr><td>${x}%${isProp()&&x===+(S.dl??5)&&x!==1?' (daily limit)':isProp()&&x===+(S.ol??10)?' (overall limit)':''}</td><td>${f2(cap*x/100)}</td><td><b>${pf(per(x))}</b></td></tr>`).join('');
+  o.innerHTML=`<div class="card"><div class="row"><b>Lot size</b><b style="font-size:22px">${tooSmall?mn.toFixed(2):lots.toFixed(2)}</b></div>
+  <div class="muted" style="font-size:13px">Risk ${f2(risk$)} (${rk}% of ${f2(cap)}) ÷ (${sl} ${I.u.split(' ')[0]} × ${f2(pv)} per pip per lot) = ${exact.toFixed(3)} lots, rounded down to ${tooSmall?mn+' (the minimum)':lots.toFixed(2)}.</div>${I.g==='Forex'?`<div class="muted" style="font-size:13px">= ${Math.round(use*(S.cat==='micro'?1000:100000)).toLocaleString('en')} units of the base currency</div>`:''}
+  ${tooSmall?`<p class="loss" style="margin:8px 0 0">Your risk is below the smallest lot (${mn}). At ${mn} lot the stop loss risks ${f2(act)} (${actPct.toFixed(2)}%). Use a tighter stop or a larger risk %.</p>`:`<div style="margin-top:8px">Real risk with this lot: <b>${f2(act)}</b> (${actPct.toFixed(2)}%)</div>`}
   ${tp>0?`<div style="margin-top:4px">Take profit ${tp} ${I.u.split(' ')[0]}: <b class="win">+${f2(use*tp*pv)}</b> · Reward : Risk <b>${(tp/sl).toFixed(2)}</b></div>`:''}</div>
   <div class="card"><b>Pips for each % of capital</b><div class="muted" style="font-size:13px">At <b>${L.toFixed(2)} lots</b>${lot0>0?' (your lot size)':' (the lot size above)'}. 1% of ${f2(cap)} is <b>${f2(cap/100)}</b>, which is <b>${pf(per(1))} ${I.u.split(' ')[0]}</b>.</div>
   <div style="overflow-x:auto"><table class="lg"><thead><tr><th>Risk</th><th>Amount</th><th>${I.u.split(' ')[0]}</th></tr></thead><tbody>${rows}</tbody></table></div></div>
   <div class="card"><b>Pips that equal 1% (${f2(cap/100)}) by lot size</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>Lots</th><th>${I.u.split(' ')[0]} for 1%</th><th>Per pip</th></tr></thead><tbody>${lotsTbl.map(l=>`<tr><td>${l.toFixed(2)}</td><td><b>${pf((cap/100)/(pv*l))}</b></td><td>${f2(pv*l)}</td></tr>`).join('')}</tbody></table></div></div>
-  <div class="card"><b>Lot size for ${rk}% risk by stop loss</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>Stop (${I.u.split(' ')[0]})</th><th>Lots</th></tr></thead><tbody>${slTbl.map(x=>{const l=Math.floor(risk$/(x*pv)*100+1e-9)/100;return `<tr><td>${x}</td><td><b>${l>=0.01?l.toFixed(2):'under 0.01'}</b></td></tr>`}).join('')}</tbody></table></div></div>
+  <div class="card"><b>Lot size for ${rk}% risk by stop loss</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>Stop (${I.u.split(' ')[0]})</th><th>Lots</th></tr></thead><tbody>${slTbl.map(x=>{const l=Math.floor(risk$/(x*pv)*100+1e-9)/100;return `<tr><td>${x}</td><td><b>${l>=mn?l.toFixed(2):'under '+mn}</b></td></tr>`}).join('')}</tbody></table></div></div>
   <p class="muted" style="font-size:12px">Estimates only. Pip and point values differ between brokers and change with price, so check your broker's contract specification before trading.</p>`;
 }
-function saveCalc(){const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.calc={cap:v('c_cap'),risk:v('c_risk'),sl:v('c_sl'),sym:$('#c_sym').value,px:v('c_px'),tp:v('c_tp'),lot:v('c_lot')};save()}
+function saveCalc(){const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.calc={cap:v('c_cap'),risk:v('c_risk'),sl:v('c_sl'),sym:$('#c_sym').value,px:v('c_px'),tp:v('c_tp'),lot:v('c_lot'),min:v('c_min')};save()}
 document.addEventListener('input',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_pv')calcPvManual=true;calcUpdate()});
-document.addEventListener('change',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_sym'){calcPvManual=false;calcUpdate()}saveCalc()});
+document.addEventListener('change',e=>{const id=e.target.id||'';if(!id.startsWith('c_'))return;if(id==='c_sym'){calcPvManual=false;calcUpdate()}if(id==='c_cat'){S.cat=$('#c_cat').value;calcPvManual=false;calcUpdate()}saveCalc()});
 let grMode='m',grLim=true,grPts=[];
 const GW=360,GL=46,GR=8;
 const tk=n=>{const a=Math.abs(n);return (n<0?'−':'')+'$'+(a>=1000?(a/1000).toFixed(a>=10000?0:1)+'k':Math.round(a))};
@@ -444,18 +453,18 @@ function growth(){
   else{const y=cur.getFullYear(),m=cur.getMonth();from=iso(new Date(y,m,1));const last=iso(new Date(y,m+1,0));to=last<today?last:today}
   const start=dl[0]<from?dl[0]:from,days=[];
   for(const t=new Date(start+'T00:00');iso(t)<=to;t.setDate(t.getDate()+1))days.push(iso(t));
-  const ol=b*(+(S.ol??10))/100,tr=S.olt==='trailing';let bal=b,peak=b;const all=[];
+  const ol=b*(isProp()?+(S.ol??10):0)/100,tr=S.olt==='trailing';let bal=b,peak=b;const all=[];
   for(const d of days){const p=byDay[d]||0;bal+=p;peak=Math.max(peak,bal);all.push({d,p,bal,floor:(tr?peak:b)-ol})}
   const before=all.filter(x=>x.d<from),pts=all.filter(x=>x.d>=from);
   return{pts,base:before.length?before[before.length-1].bal:b,b};
 }
 function growthCard(){
   const G=growth(),mo=cur.toLocaleString('en',{month:'long',year:'numeric'});
-  const chips=`<div class="chips" style="margin:0"><button class="${grMode==='m'?'on':''}" data-gm="m">${mo}</button><button class="${grMode==='a'?'on':''}" data-gm="a">All time</button>${capital()>0?`<button class="${grLim?'on':''}" data-gl="1">Loss limit</button>`:''}</div>`;
+  const chips=`<div class="chips" style="margin:0"><button class="${grMode==='m'?'on':''}" data-gm="m">${mo}</button><button class="${grMode==='a'?'on':''}" data-gm="a">All time</button>${capital()>0&&isProp()?`<button class="${grLim?'on':''}" data-gl="1">Loss limit</button>`:''}</div>`;
   const title=capital()>0?'Account growth':'Profit curve';
   if(!G||!G.pts.length){grPts=[];return `<div class="card"><div class="row"><b>${title}</b></div>${chips}<p class="muted" style="margin:8px 0 0">${G?'No data for this month yet.':'Log trades and your growth curve will appear here.'}</p></div>`}
   const {pts,base,b}=G,n=pts.length,vals=pts.map(x=>x.bal).concat([base]);
-  if(b>0){vals.push(b);if(grLim)pts.forEach(x=>vals.push(x.floor))}
+  if(b>0){vals.push(b);if(grLim&&isProp())pts.forEach(x=>vals.push(x.floor))}
   let lo=Math.min(...vals),hi=Math.max(...vals);if(hi-lo<1e-9){hi+=1;lo-=1}const pad=(hi-lo)*.08;lo-=pad;hi+=pad;
   const T=10,CH=104,BT=T+CH+12,BH=34,BM=BT+BH/2,H=BT+BH+22,PW=GW-GL-GR;
   const X=i=>GL+(n>1?PW*i/(n-1):PW/2),Y=v=>T+CH*(1-(v-lo)/(hi-lo));
@@ -467,7 +476,7 @@ function growthCard(){
   const lab=i=>grMode==='m'?String(+pts[i].d.slice(8)):shortD(pts[i].d);
   const mid=Math.floor((n-1)/2);
   const area=`${X(0).toFixed(1)},${(T+CH).toFixed(1)} ${line} ${X(n-1).toFixed(1)},${(T+CH).toFixed(1)}`;
-  const floorLine=b>0&&grLim?`<polyline class="gf" points="${pts.map((x,i)=>X(i).toFixed(1)+','+Y(x.floor).toFixed(1)).join(' ')}"/><text x="${GW-GR}" y="${(Y(pts[n-1].floor)-3).toFixed(1)}" text-anchor="end" style="fill:var(--loss)">breach ${tk(pts[n-1].floor)}</text>`:'';
+  const floorLine=b>0&&grLim&&isProp()?`<polyline class="gf" points="${pts.map((x,i)=>X(i).toFixed(1)+','+Y(x.floor).toFixed(1)).join(' ')}"/><text x="${GW-GR}" y="${(Y(pts[n-1].floor)-3).toFixed(1)}" text-anchor="end" style="fill:var(--loss)">breach ${tk(pts[n-1].floor)}</text>`:'';
   const baseLine=b>0?`<line class="gb" x1="${GL}" x2="${GW-GR}" y1="${Y(b).toFixed(1)}" y2="${Y(b).toFixed(1)}"/>`:'';
   grPts=pts;
   // stats
@@ -493,14 +502,65 @@ function grTip(e,s){
 }
 document.addEventListener('pointerdown',e=>{const s=e.target.closest&&e.target.closest('#grsvg');if(s)grTip(e,s)});
 document.addEventListener('pointermove',e=>{const s=e.target.closest&&e.target.closest('#grsvg');if(s)grTip(e,s)});
+const isProp=()=>S.acct!=='personal',microF=()=>S.cat==='micro'?0.01:1;
+function pvFor(sym,px){const I=INS[sym];if(!I)return null;const mf=I.g==='Forex'?microF():1;if(I.px)return px>0?I.f(px)*mf:null;return I.pv*mf}
+function growUpdate(){
+  const o=$('#gout');if(!o||!$('#g_cap'))return;
+  const g=id=>parseFloat($('#'+id).value),cap=g('g_cap'),r=g('g_ret')/100,n=Math.min(120,Math.floor(g('g_n'))),dep=g('g_dep')||0,wk=$('#g_per').value==='w',unit=wk?'week':'month';
+  if(!(cap>0&&r>=0&&n>=1)){o.innerHTML='<p class="muted">Enter your capital, a return per period and how many periods.</p>';return}
+  let bal=cap,sim=cap;const rows=[],P=[cap],Q=[cap];
+  for(let i=1;i<=n;i++){const b0=bal;bal=bal*(1+r)+dep;sim=sim+cap*r+dep;rows.push({i,bal,p:bal-b0-dep});P.push(bal);Q.push(sim)}
+  const put=cap+dep*n,profit=bal-put,dbl=r>0?Math.log(2)/Math.log(1+r):null,yr=(Math.pow(1+r,wk?52:12)-1)*100;
+  const W=360,H=150,L=46,Rm=8,T=8,B=22,PW=W-L-Rm,CH=H-T-B,hi=Math.max(...P,...Q),lo=Math.min(...P,...Q,cap),pad=(hi-lo)*.08||1;
+  const X=i=>L+PW*i/n,Y=v=>T+CH*(1-(v-(lo-pad))/((hi+pad)-(lo-pad)));
+  const pl=a=>a.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ');
+  const step=Math.max(1,Math.ceil(n/24)),show=rows.filter(x=>x.i%step===0||x.i===n);
+  const rates=[...new Set([2,5,10,20,+(r*100).toFixed(2)])].filter(x=>x>0).sort((a,b)=>a-b);
+  const c=S.calc||{},sym=INS[c.sym]?c.sym:'XAUUSD',sl=c.sl>0?c.sl:50,rk=c.risk>0?c.risk:1,pv=pvFor(sym,c.px),mn=c.min>0?c.min:0.01;
+  const lad=pv>0?[1,1.5,2,3,5,10].map(m=>{const b=cap*m,l=Math.floor(b*rk/100/(sl*pv)*100+1e-9)/100;return `<tr><td>${m===1?'Start':'×'+m}</td><td>${fm(b)}</td><td><b>${l>=mn?l.toFixed(2):'under '+mn}</b></td><td>${INS[sym].g==='Forex'&&S.cat==='micro'&&l>=mn?(l/100).toFixed(2):'–'}</td></tr>`}).join(''):'';
+  o.innerHTML=`<div class="card"><div class="row"><b>After ${n} ${unit}${n>1?'s':''}</b><b class="win" style="font-size:22px">${fm(bal)}</b></div>
+  <div class="muted" style="font-size:13px">Profit ${fm(profit)} on ${fm(put)} put in · ${(bal/cap).toFixed(2)}× your start · about ${yr.toFixed(1)}% a year${dbl?` · doubles in about ${dbl.toFixed(1)} ${unit}s`:''}. Without compounding you would have ${fm(sim)}.</div>
+  <svg viewBox="0 0 ${W} ${H}" class="gcv" role="img" aria-label="Compounding growth chart" style="margin-top:8px"><line class="gg" x1="${L}" x2="${W-Rm}" y1="${Y(hi).toFixed(1)}" y2="${Y(hi).toFixed(1)}"/><text x="${L-4}" y="${(Y(hi)+3).toFixed(1)}" text-anchor="end">${tk(hi)}</text><text x="${L-4}" y="${(Y(lo)+3).toFixed(1)}" text-anchor="end">${tk(lo)}</text>
+  <polyline class="gb" points="${pl(Q)}"/><polyline class="gl up" points="${pl(P)}"/><text x="${L}" y="${H-6}">Start</text><text x="${W-Rm}" y="${H-6}" text-anchor="end">${unit} ${n}</text></svg>
+  <div class="muted" style="font-size:12px">Green: compounding. Dashed: simple growth, no reinvesting.</div></div>
+  <div class="card"><b>Balance by ${unit}</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>${unit[0].toUpperCase()+unit.slice(1)}</th><th>Profit</th><th>Balance</th></tr></thead><tbody>${show.map(x=>`<tr><td>${x.i}</td><td class="${cls(x.p)}">${money(x.p)}</td><td><b>${fm(x.bal)}</b></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><b>Lot size as your balance grows</b><div class="muted" style="font-size:13px">Risking ${rk}% with a ${sl} ${INS[sym].u.split(' ')[0]} stop on ${sym}${S.cat==='micro'?' (Micro account)':''}. Change these in the Calc tab.</div>${pv>0?`<div style="overflow-x:auto"><table class="lg"><thead><tr><th>Balance</th><th>Amount</th><th>Lots</th><th>${S.cat==='micro'&&INS[sym].g==='Forex'?'Standard lots':''}</th></tr></thead><tbody>${lad}</tbody></table></div>`:`<p class="muted">Pick ${sym} price in the Calc tab to see lot sizes.</p>`}</div>`;
+}
+function growGuide(){
+  const ex=1000*Math.pow(1.05,12);
+  const yr=[2,5,10,20].map(x=>`<tr><td>${x}% a month</td><td><b>+${((Math.pow(1+x/100,12)-1)*100).toFixed(0)}%</b> a year</td></tr>`).join('');
+  const rc=[5,10,20,30,50].map(x=>`<tr><td>Lose ${x}%</td><td>need <b>+${(100/(100-x)*100-100).toFixed(1)}%</b> to get back</td></tr>`).join('');
+  return `<div class="card"><b>How compounding works</b><p style="margin:6px 0 0">You leave profits in the account, so next period's profit is earned on a bigger balance. For example, $1,000 growing 5% a month becomes <b>${fm(ex)}</b> after 12 months. Adding only 5% of the starting amount each month would give <b>$1,600.00</b>.</p></div>
+  <div class="card"><b>Ground rules</b><ul class="gl2"><li><b>Fix the risk %, not the lot size.</b> Risk the same share of your current balance on every trade. Lots grow as you win and shrink after losses.</li>
+  <li><b>${isProp()?'Prop firm accounts have a fixed size.':'Personal accounts compound freely.'}</b> ${isProp()?'Compounding applies to the payouts you keep and to your firm\'s scaling plan. Stay inside the daily and overall loss limits first.':'Leave profits in the account so your lot size can rise, and set a maximum daily loss you will not pass.'}</li>
+  <li><b>Start on Micro, then move up.</b> A Micro lot is 1,000 units, so 100 micro lots equal 1 standard lot. Practise sizing there until your results are steady, then consider a Standard account.</li>
+  <li><b>Protect the balance first.</b> Losses need bigger gains to recover (table below).</li>
+  <li><b>Targets are not promises.</b> The projection assumes the same return every period. Real results vary and can be negative. This is not financial advice.</li></ul></div>
+  <div class="card"><b>What a monthly return becomes in a year</b><div style="overflow-x:auto"><table class="lg"><tbody>${yr}</tbody></table></div><div class="muted" style="font-size:12px">High monthly targets usually mean high risk per trade. Steady, smaller returns are easier to repeat.</div></div>
+  <div class="card"><b>Why drawdowns hurt twice</b><div style="overflow-x:auto"><table class="lg"><tbody>${rc}</tbody></table></div></div>`;
+}
+function vGrow(){
+  const c=S.grow||{},cap=c.cap||(capital()>0?capital():1000);
+  setTimeout(growUpdate,0);
+  return `<h2>Compounding guide</h2><div class="card" id="grow">
+  <label style="margin-top:0">Starting capital ($)<input id="g_cap" type="number" inputmode="decimal" step="any" min="0" value="${cap}"></label>
+  <div class="two"><label>Return per period (%)<input id="g_ret" type="number" inputmode="decimal" step="any" min="0" value="${c.ret??5}"></label><label>Period<select id="g_per"><option value="m" ${c.per!=='w'?'selected':''}>Monthly</option><option value="w" ${c.per==='w'?'selected':''}>Weekly</option></select></label></div>
+  <div class="two"><label>Number of periods<input id="g_n" type="number" inputmode="numeric" step="1" min="1" max="120" value="${c.n??12}"></label><label>Added each period ($)<input id="g_dep" type="number" inputmode="decimal" step="any" min="0" value="${c.dep??0}"></label></div></div>
+  <div id="gout"></div>${growGuide()}`;
+}
+document.addEventListener('input',e=>{if((e.target.id||'').startsWith('g_'))growUpdate()});
+document.addEventListener('change',e=>{if(!(e.target.id||'').startsWith('g_'))return;growUpdate();const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.grow={cap:v('g_cap'),ret:v('g_ret'),per:$('#g_per').value,n:v('g_n'),dep:v('g_dep')};save()});
 function vCap(){
   const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
-  return `<h2>Capital</h2><div class="card"><label style="margin-top:0">Starting capital in $ (prop firm account size)<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
-  <div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
-  <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label></div>
+  return `<h2>Capital</h2><div class="card"><small class="muted">Account type</small><div class="chips" style="margin:2px 0 8px" role="group" aria-label="Account type"><button class="${isProp()?'on':''}" data-ac="prop">Prop firm</button><button class="${!isProp()?'on':''}" data-ac="personal">Personal capital</button></div>
+  <small class="muted">Account category</small><div class="chips" style="margin:2px 0 4px" role="group" aria-label="Account category"><button class="${S.cat!=='micro'?'on':''}" data-ct="standard">Standard account</button><button class="${S.cat==='micro'?'on':''}" data-ct="micro">Micro account</button></div>
+  <p class="muted" style="font-size:12px;margin:0 0 6px">${S.cat==='micro'?'Micro (like XM Micro): 1 lot = 1,000 units, about $0.10 per pip on EURUSD per lot.':'Standard: 1 lot = 100,000 units, about $10 per pip on EURUSD per lot.'}</p>
+  <label style="margin-top:0">Starting capital in $ (${isProp()?'prop firm account size':'your account'})<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
+  ${isProp()?`<div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
+  <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label>`:''}</div>
   <div class="card"><b>Log daily result</b>
-  <form id="qf" class="qf"><input type="date" id="qd" value="${qDate||iso(new Date())}" required aria-label="Date"><input type="number" step="any" id="qa" inputmode="decimal" placeholder="Result in $, e.g. -100" required aria-label="Result"><button class="p" type="submit">Add</button></form>
+  <form id="qf" class="qf"><input type="date" id="qd" value="${qDate||iso(new Date())}" required aria-label="Date"><input type="number" step="any" id="qa" inputmode="decimal" placeholder="Result in $" required aria-label="Result"><button class="p" type="submit">Add</button></form>
   <div class="muted" style="font-size:13px;margin-top:6px">Type the day's result, use a minus for a loss. Your balance, daily % and limits update automatically.</div><div id="qp" class="muted" style="font-size:13px;margin-top:4px"></div></div>
   <div class="card"><div class="row"><b>Total capital</b><b>${f(cap)}</b></div>
   <div class="muted">Starting ${f(+S.bal||0)} · added ${(add>=0?'+':'−')+f(Math.abs(add))} · trading result <span class="${cls(net)}">${money(net)}</span></div>
@@ -566,7 +626,7 @@ function openTrade(editId){
     const oth=f.get('other').trim(),pr=f.get('pair')==='OTHER'?(T&&oth===T.pair?T.pair:oth.toUpperCase()):f.get('pair');
     const rec={date:f.get('date'),pair:pr,side:f.get('side'),pnl:+f.get('pnl'),notes:f.get('notes'),img:pendingImg};
     if(T)Object.assign(T,rec,{upd:Date.now()});else S.trades.push({id:Date.now()+'',...rec});
-    sel=f.get('date');save();const R2=risk();if(R2&&(R2.over||-(R2.byDay[sel]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Check the Prop firm limits card on the Calendar tab.';$('#dlg').close();render()};
+    sel=f.get('date');save();const R2=risk();if(R2&&!R2.personal&&(R2.over||-(R2.byDay[sel]||0)>=R2.dLim-1e-9))warn='Prop firm limit reached. Check the Prop firm limits card on the Calendar tab.';$('#dlg').close();render()};
 }
 function openEvent(){
   $('#dlg').innerHTML=`<form method="dialog" id="ef"><b>New high-impact event</b>
@@ -581,12 +641,14 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-ac],[data-ct],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
+  else if(D.ac){S.acct=D.ac;save()}
+  else if(D.ct){S.cat=D.ct;calcPvManual=false;save()}
   else if(D.hs)return openLogin();
   else if(D.hc){openLogin();msg('New here? Type your email and tap Create account.',1);return}
   else if(D.gm){grMode=D.gm}
