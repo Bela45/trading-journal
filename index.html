@@ -82,6 +82,7 @@ button.big{min-height:48px;padding:10px 22px;font-size:16px;font-weight:600;bord
 .hf{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
 @media(min-width:820px){.hero{grid-template-columns:1.1fr .9fr;gap:48px;padding-top:56px}.fl{grid-template-columns:1fr 1fr}.hsec{padding-top:56px}}
 nav::-webkit-scrollbar{display:none}
+.lnkb{background:none;border:0;color:var(--acc);padding:0 4px;min-height:28px;font:inherit;text-decoration:underline}details.card>summary{cursor:pointer}details.card[open]>summary{margin-bottom:8px}
 .gl2{margin:6px 0 0;padding-left:18px;display:grid;gap:8px;line-height:1.45}
 dialog .row{flex-wrap:wrap;gap:8px}dialog .row>span{display:flex;gap:8px;flex-wrap:wrap}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
@@ -504,26 +505,57 @@ document.addEventListener('pointerdown',e=>{const s=e.target.closest&&e.target.c
 document.addEventListener('pointermove',e=>{const s=e.target.closest&&e.target.closest('#grsvg');if(s)grTip(e,s)});
 const isProp=()=>S.acct!=='personal',microF=()=>S.cat==='micro'?0.01:1;
 function pvFor(sym,px){const I=INS[sym];if(!I)return null;const mf=I.g==='Forex'?microF():1;if(I.px)return px>0?I.f(px)*mf:null;return I.pv*mf}
+let gv=null;
+function sheet(){
+  const b0=capital(),byDay={};S.trades.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.pnl);
+  let bal=b0;const rows=Object.keys(byDay).sort().map(d=>{const s=bal,p=byDay[d];bal+=p;return{d,s,p,e:bal,pct:s>0?p/s*100:0,tot:b0>0?(bal-b0)/b0*100:0}});
+  return{rows,b0,end:bal};
+}
+function sheetCsv(){const Z=sheet();return ['Date,Start balance,P&L,End balance,Day %,Total %',...Z.rows.map(x=>[x.d,x.s.toFixed(2),x.p.toFixed(2),x.e.toFixed(2),x.pct.toFixed(2),x.tot.toFixed(2)].join(','))].join('\n')}
+function downloadSheet(){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(sheetCsv());a.download='compounding-sheet.csv';document.body.appendChild(a);a.click();a.remove()}
+function useActual(){
+  const Z=sheet(),r=Z.rows;if(!r.length||Z.b0<=0)return;
+  const w=r.filter(x=>x.p>0),l=r.filter(x=>x.p<0),m=a=>a.length?a.reduce((t,x)=>t+Math.abs(x.pct),0)/a.length:0;
+  S.grow={cap:+Z.end.toFixed(2),ret:+m(w).toFixed(2),per:'d',n:20,dep:0,lose:Math.round(l.length/r.length*100),loss:+m(l).toFixed(2),q:100};gv='p';save();
+}
+function vActual(){
+  const Z=sheet(),r=Z.rows;
+  if(!r.length)return '<div class="note">Log results in the Calendar tab or with the quick entry in the Capital tab, and your compounding sheet is created here automatically, one sheet for each month.</div>';
+  if(Z.b0<=0)return '<div class="note">Set your starting capital in the Capital tab so the sheet can work out your daily % and compounding.</div>';
+  const w=r.filter(x=>x.p>0),l=r.filter(x=>x.p<0),avg=a=>a.length?a.reduce((t,x)=>t+Math.abs(x.pct),0)/a.length:0,n=r.length;
+  const geo=Z.end>0?(Math.pow(Z.end/Z.b0,1/n)-1)*100:null,best=r.reduce((a,x)=>x.p>a.p?x:a),worst=r.reduce((a,x)=>x.p<a.p?x:a),net=Z.end-Z.b0;
+  const st=(a,v,k)=>`<div class="stat"><small>${a}</small><b class="${k||''}" style="font-size:15px">${v}</b></div>`;
+  const months=[...new Set(r.map(x=>x.d.slice(0,7)))].reverse();
+  const sheets=months.map((m,i)=>{const rs=r.filter(x=>x.d.startsWith(m)),s=rs[0].s,e=rs[rs.length-1].e,wd=rs.filter(x=>x.p>0).length,ld=rs.filter(x=>x.p<0).length,nm=new Date(m+'-01T00:00').toLocaleString('en',{month:'long',year:'numeric'});
+    return `<details class="card" ${i===0?'open':''}><summary><b>${nm}</b> <span class="${cls(e-s)}">${pc((e/s-1)*100,2)}</span><div class="muted" style="font-size:13px">${wd} win · ${ld} loss days · ${fm(s)} → ${fm(e)}</div></summary>
+    <div style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>Start</th><th>P&amp;L</th><th>End</th><th>Day %</th><th>Total %</th></tr></thead><tbody>${rs.map(x=>`<tr><td><button class="lnkb" data-on="${x.d}" title="Open this day in the calendar">${x.d.slice(5)}</button></td><td>${fm(x.s)}</td><td class="${cls(x.p)}">${money(x.p)}</td><td><b>${fm(x.e)}</b></td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${cls(x.tot)}">${pc(x.tot,2)}</td></tr>`).join('')}</tbody></table></div></details>`}).join('');
+  return `<div class="card"><div class="row"><b>Your results, compounded</b><b class="${cls(net)}" style="font-size:20px">${pc(net/Z.b0*100,2)}</b></div>
+  <div class="muted" style="font-size:13px">Built from your calendar. Each day starts with the previous day's ending balance, so wins and losses compound automatically. Days with a loss are included.</div>
+  <div class="stats" style="margin:10px 0 0">${st('Start',fm(Z.b0))}${st('Balance now',fm(Z.end),cls(net))}${st('Trading days',n)}${st('Win days',w.length+' ('+Math.round(w.length/n*100)+'%)','win')}${st('Loss days',l.length+' ('+Math.round(l.length/n*100)+'%)','loss')}${st('Avg win day',w.length?'+'+avg(w).toFixed(2)+'%':'–','win')}${st('Avg loss day',l.length?'−'+avg(l).toFixed(2)+'%':'–','loss')}${st('Avg daily growth',geo===null?'–':pc(geo,2),cls(geo||0))}${st('Best day',money(best.p)+' ('+pc(best.pct,2)+')','win')}${st('Worst day',worst.p<0?money(worst.p)+' ('+pc(worst.pct,2)+')':'–','loss')}</div>
+  <div class="links"><button data-gu="1">Use my results in the planner</button><button data-gcsv="1">Download sheet (CSV)</button></div></div>${sheets}`;
+}
 function growUpdate(){
   const o=$('#gout');if(!o||!$('#g_cap'))return;
-  const g=id=>parseFloat($('#'+id).value),cap=g('g_cap'),r=g('g_ret')/100,n=Math.min(120,Math.floor(g('g_n'))),dep=g('g_dep')||0,wk=$('#g_per').value==='w',unit=wk?'week':'month';
+  const g=id=>parseFloat($('#'+id).value),cap=g('g_cap'),r=g('g_ret')/100,n=Math.min(260,Math.floor(g('g_n'))),dep=g('g_dep')||0,per=$('#g_per').value,unit=per==='d'?'day':per==='w'?'week':'month',ppy=per==='d'?252:per==='w'?52:12;
+  const L=Math.min(100,Math.max(0,g('g_lose')||0)),ls=Math.max(0,g('g_loss')||0)/100,q=Math.min(100,Math.max(0,isNaN(g('g_q'))?100:g('g_q')))/100;
   if(!(cap>0&&r>=0&&n>=1)){o.innerHTML='<p class="muted">Enter your capital, a return per period and how many periods.</p>';return}
-  let bal=cap,sim=cap;const rows=[],P=[cap],Q=[cap];
-  for(let i=1;i<=n;i++){const b0=bal;bal=bal*(1+r)+dep;sim=sim+cap*r+dep;rows.push({i,bal,p:bal-b0-dep});P.push(bal);Q.push(sim)}
-  const put=cap+dep*n,profit=bal-put,dbl=r>0?Math.log(2)/Math.log(1+r):null,yr=(Math.pow(1+r,wk?52:12)-1)*100;
-  const W=360,H=150,L=46,Rm=8,T=8,B=22,PW=W-L-Rm,CH=H-T-B,hi=Math.max(...P,...Q),lo=Math.min(...P,...Q,cap),pad=(hi-lo)*.08||1;
-  const X=i=>L+PW*i/n,Y=v=>T+CH*(1-(v-(lo-pad))/((hi+pad)-(lo-pad)));
+  const isLoss=i=>L>0&&Math.floor(i*L/100+1e-9)>Math.floor((i-1)*L/100+1e-9);
+  let C=cap,W=0,sim=cap;const rows=[],P=[cap],Q=[cap];
+  for(let i=1;i<=n;i++){const lossP=isLoss(i),ret=lossP?-ls:r,pnl=C*ret;if(pnl>0){C+=pnl*q;W+=pnl*(1-q)}else C+=pnl;C+=dep;sim+=cap*ret+dep;rows.push({i,p:pnl,bal:C,loss:lossP});P.push(C+W);Q.push(sim)}
+  const total=C+W,put=cap+dep*n,profit=total-put,gEff=dep>0?r:(total>0?Math.pow(total/cap,1/n)-1:0),dbl=gEff>0?Math.log(2)/Math.log(1+gEff):null,yr=(Math.pow(1+gEff,ppy)-1)*100;
+  const W_=360,H=150,Lm=46,Rm=8,T=8,B=22,PW=W_-Lm-Rm,CH=H-T-B,hi=Math.max(...P,...Q),lo=Math.min(...P,...Q,cap),pad=(hi-lo)*.08||1;
+  const X=i=>Lm+PW*i/n,Y=v=>T+CH*(1-(v-(lo-pad))/((hi+pad)-(lo-pad)));
   const pl=a=>a.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ');
-  const step=Math.max(1,Math.ceil(n/24)),show=rows.filter(x=>x.i%step===0||x.i===n);
-  const rates=[...new Set([2,5,10,20,+(r*100).toFixed(2)])].filter(x=>x>0).sort((a,b)=>a-b);
+  const step=Math.max(1,Math.ceil(n/24)),show=rows.filter(x=>x.i%step===0||x.i===n||x.loss&&n<=30);
   const c=S.calc||{},sym=INS[c.sym]?c.sym:'XAUUSD',sl=c.sl>0?c.sl:50,rk=c.risk>0?c.risk:1,pv=pvFor(sym,c.px),mn=c.min>0?c.min:0.01;
   const lad=pv>0?[1,1.5,2,3,5,10].map(m=>{const b=cap*m,l=Math.floor(b*rk/100/(sl*pv)*100+1e-9)/100;return `<tr><td>${m===1?'Start':'×'+m}</td><td>${fm(b)}</td><td><b>${l>=mn?l.toFixed(2):'under '+mn}</b></td><td>${INS[sym].g==='Forex'&&S.cat==='micro'&&l>=mn?(l/100).toFixed(2):'–'}</td></tr>`}).join(''):'';
-  o.innerHTML=`<div class="card"><div class="row"><b>After ${n} ${unit}${n>1?'s':''}</b><b class="win" style="font-size:22px">${fm(bal)}</b></div>
-  <div class="muted" style="font-size:13px">Profit ${fm(profit)} on ${fm(put)} put in · ${(bal/cap).toFixed(2)}× your start · about ${yr.toFixed(1)}% a year${dbl?` · doubles in about ${dbl.toFixed(1)} ${unit}s`:''}. Without compounding you would have ${fm(sim)}.</div>
-  <svg viewBox="0 0 ${W} ${H}" class="gcv" role="img" aria-label="Compounding growth chart" style="margin-top:8px"><line class="gg" x1="${L}" x2="${W-Rm}" y1="${Y(hi).toFixed(1)}" y2="${Y(hi).toFixed(1)}"/><text x="${L-4}" y="${(Y(hi)+3).toFixed(1)}" text-anchor="end">${tk(hi)}</text><text x="${L-4}" y="${(Y(lo)+3).toFixed(1)}" text-anchor="end">${tk(lo)}</text>
-  <polyline class="gb" points="${pl(Q)}"/><polyline class="gl up" points="${pl(P)}"/><text x="${L}" y="${H-6}">Start</text><text x="${W-Rm}" y="${H-6}" text-anchor="end">${unit} ${n}</text></svg>
-  <div class="muted" style="font-size:12px">Green: compounding. Dashed: simple growth, no reinvesting.</div></div>
-  <div class="card"><b>Balance by ${unit}</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>${unit[0].toUpperCase()+unit.slice(1)}</th><th>Profit</th><th>Balance</th></tr></thead><tbody>${show.map(x=>`<tr><td>${x.i}</td><td class="${cls(x.p)}">${money(x.p)}</td><td><b>${fm(x.bal)}</b></td></tr>`).join('')}</tbody></table></div></div>
+  const U=unit[0].toUpperCase()+unit.slice(1);
+  o.innerHTML=`<div class="card"><div class="row"><b>After ${n} ${unit}${n>1?'s':''}</b><b class="${total>=put?'win':'loss'}" style="font-size:22px">${fm(total)}</b></div>
+  <div class="muted" style="font-size:13px">Profit ${fm(profit)} on ${fm(put)} put in · ${(total/cap).toFixed(2)}× your start · about ${yr>=10000?'over 10,000':yr.toFixed(1)}% a year${dbl?` · doubles in about ${dbl.toFixed(1)} ${unit}s`:''}. ${L>0?`${Math.round(L)}% of ${unit}s lose ${(ls*100).toFixed(2)}% (${rows.filter(x=>x.loss).length} losing ${unit}s).`:'No losing '+unit+'s in this plan.'} ${q<1?`You reinvest ${Math.round(q*100)}% of profits and take out ${fm(W)}.`:''} With the same results but a fixed lot size you would have ${fm(sim)}.${yr>500?' A yearly pace this high is very unlikely to last, so treat it as a test, not a target.':''}</div>
+  <svg viewBox="0 0 ${W_} ${H}" class="gcv" role="img" aria-label="Compounding growth chart" style="margin-top:8px"><line class="gg" x1="${Lm}" x2="${W_-Rm}" y1="${Y(hi).toFixed(1)}" y2="${Y(hi).toFixed(1)}"/><text x="${Lm-4}" y="${(Y(hi)+3).toFixed(1)}" text-anchor="end">${tk(hi)}</text><text x="${Lm-4}" y="${(Y(lo)+3).toFixed(1)}" text-anchor="end">${tk(lo)}</text>
+  <polyline class="gb" points="${pl(Q)}"/><polyline class="gl up" points="${pl(P)}"/><text x="${Lm}" y="${H-6}">Start</text><text x="${W_-Rm}" y="${H-6}" text-anchor="end">${unit} ${n}</text></svg>
+  <div class="muted" style="font-size:12px">Green: compounding. Dashed: fixed lot size, no reinvesting.</div></div>
+  <div class="card"><b>Balance by ${unit}</b><div style="overflow-x:auto"><table class="lg"><thead><tr><th>${U}</th><th>Result</th><th>Balance</th></tr></thead><tbody>${show.map(x=>`<tr><td>${x.i}${x.loss?' ⚠':''}</td><td class="${cls(x.p)}">${money(x.p)}</td><td><b>${fm(x.bal)}</b></td></tr>`).join('')}</tbody></table></div></div>
   <div class="card"><b>Lot size as your balance grows</b><div class="muted" style="font-size:13px">Risking ${rk}% with a ${sl} ${INS[sym].u.split(' ')[0]} stop on ${sym}${S.cat==='micro'?' (Micro account)':''}. Change these in the Calc tab.</div>${pv>0?`<div style="overflow-x:auto"><table class="lg"><thead><tr><th>Balance</th><th>Amount</th><th>Lots</th><th>${S.cat==='micro'&&INS[sym].g==='Forex'?'Standard lots':''}</th></tr></thead><tbody>${lad}</tbody></table></div>`:`<p class="muted">Pick ${sym} price in the Calc tab to see lot sizes.</p>`}</div>`;
 }
 function growGuide(){
@@ -534,6 +566,7 @@ function growGuide(){
   <div class="card"><b>Ground rules</b><ul class="gl2"><li><b>Fix the risk %, not the lot size.</b> Risk the same share of your current balance on every trade. Lots grow as you win and shrink after losses.</li>
   <li><b>${isProp()?'Prop firm accounts have a fixed size.':'Personal accounts compound freely.'}</b> ${isProp()?'Compounding applies to the payouts you keep and to your firm\'s scaling plan. Stay inside the daily and overall loss limits first.':'Leave profits in the account so your lot size can rise, and set a maximum daily loss you will not pass.'}</li>
   <li><b>Start on Micro, then move up.</b> A Micro lot is 1,000 units, so 100 micro lots equal 1 standard lot. Practise sizing there until your results are steady, then consider a Standard account.</li>
+  <li><b>Not every day wins.</b> Losing days are normal, and compounding does not need a profit every day. Add losing periods in the planner and check the plan still works.</li>
   <li><b>Protect the balance first.</b> Losses need bigger gains to recover (table below).</li>
   <li><b>Targets are not promises.</b> The projection assumes the same return every period. Real results vary and can be negative. This is not financial advice.</li></ul></div>
   <div class="card"><b>What a monthly return becomes in a year</b><div style="overflow-x:auto"><table class="lg"><tbody>${yr}</tbody></table></div><div class="muted" style="font-size:12px">High monthly targets usually mean high risk per trade. Steady, smaller returns are easier to repeat.</div></div>
@@ -541,15 +574,21 @@ function growGuide(){
 }
 function vGrow(){
   const c=S.grow||{},cap=c.cap||(capital()>0?capital():1000);
+  if(gv===null)gv=S.trades.length?'a':'p';
+  const tabs=`<div class="chips" style="margin:0 0 8px" role="group" aria-label="Compounding view"><button class="${gv==='a'?'on':''}" data-gv="a">My results</button><button class="${gv==='p'?'on':''}" data-gv="p">Planner</button></div>`;
+  if(gv==='a')return `<h2>Compounding</h2>${tabs}${vActual()}`;
   setTimeout(growUpdate,0);
-  return `<h2>Compounding guide</h2><div class="card" id="grow">
+  return `<h2>Compounding</h2>${tabs}<div class="note" style="margin-bottom:8px">The planner is a what-if. It does not change your journal. Add losing periods to see a realistic plan, because not every day wins.</div><div class="card" id="grow">
   <label style="margin-top:0">Starting capital ($)<input id="g_cap" type="number" inputmode="decimal" step="any" min="0" value="${cap}"></label>
-  <div class="two"><label>Return per period (%)<input id="g_ret" type="number" inputmode="decimal" step="any" min="0" value="${c.ret??5}"></label><label>Period<select id="g_per"><option value="m" ${c.per!=='w'?'selected':''}>Monthly</option><option value="w" ${c.per==='w'?'selected':''}>Weekly</option></select></label></div>
-  <div class="two"><label>Number of periods<input id="g_n" type="number" inputmode="numeric" step="1" min="1" max="120" value="${c.n??12}"></label><label>Added each period ($)<input id="g_dep" type="number" inputmode="decimal" step="any" min="0" value="${c.dep??0}"></label></div></div>
+  <div class="two"><label>Return on a winning period (%)<input id="g_ret" type="number" inputmode="decimal" step="any" min="0" value="${c.ret??5}"></label><label>Period<select id="g_per"><option value="d" ${c.per==='d'?'selected':''}>Daily</option><option value="w" ${c.per==='w'?'selected':''}>Weekly</option><option value="m" ${(c.per||'m')==='m'?'selected':''}>Monthly</option></select></label></div>
+  <div class="two"><label>Number of periods (days = trading days)<input id="g_n" type="number" inputmode="numeric" step="1" min="1" max="260" value="${c.n??12}"></label><label>Added each period ($)<input id="g_dep" type="number" inputmode="decimal" step="any" min="0" value="${c.dep??0}"></label></div>
+  <div class="two"><label>Losing periods (%), optional<input id="g_lose" type="number" inputmode="decimal" step="any" min="0" max="100" value="${c.lose??0}"></label><label>Loss on a losing period (%)<input id="g_loss" type="number" inputmode="decimal" step="any" min="0" value="${c.loss??2}"></label></div>
+  <label>Reinvest this share of profits (%)<input id="g_q" type="number" inputmode="decimal" step="any" min="0" max="100" value="${c.q??100}"></label>
+  <p class="muted" style="font-size:12px;margin:6px 0 0">Losing periods are spread evenly: 20% means 1 period in 5 loses. 100% reinvested is full compounding. Lower it to take some profit out each period.</p></div>
   <div id="gout"></div>${growGuide()}`;
 }
 document.addEventListener('input',e=>{if((e.target.id||'').startsWith('g_'))growUpdate()});
-document.addEventListener('change',e=>{if(!(e.target.id||'').startsWith('g_'))return;growUpdate();const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.grow={cap:v('g_cap'),ret:v('g_ret'),per:$('#g_per').value,n:v('g_n'),dep:v('g_dep')};save()});
+document.addEventListener('change',e=>{if(!(e.target.id||'').startsWith('g_'))return;growUpdate();const v=id=>{const x=parseFloat($('#'+id).value);return isNaN(x)?null:x};S.grow={cap:v('g_cap'),ret:v('g_ret'),per:$('#g_per').value,n:v('g_n'),dep:v('g_dep'),lose:v('g_lose'),loss:v('g_loss'),q:v('g_q')};save()});
 function vCap(){
   const f=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),cap=capital(),net=sum(S.trades),add=(S.caps||[]).reduce((a,c)=>a+(+c.amt||0),0);
   const l=[...(S.caps||[])].sort((a,b)=>b.date.localeCompare(a.date));
@@ -641,12 +680,15 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-ac],[data-ct],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-ac],[data-ct],[data-gv],[data-gu],[data-gcsv],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
   else if(D.d){const n=Date.now();if(D.d===lastD&&n-lastT<450){lastT=0;sel=D.d;return openNote(D.d)}lastD=D.d;lastT=n;sel=D.d}
   else if(D.note)return openNote(sel);
+  else if(D.gv){gv=D.gv}
+  else if(D.gu){useActual()}
+  else if(D.gcsv){downloadSheet();return}
   else if(D.ac){S.acct=D.ac;save()}
   else if(D.ct){S.cat=D.ct;calcPvManual=false;save()}
   else if(D.hs)return openLogin();
