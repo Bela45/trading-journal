@@ -310,13 +310,28 @@ function qPrev(){
   const day=(r.byDay[d]||0)+a,lim=r.dLim?Math.max(0,-day)/r.dLim*100:0;
   e.textContent=`Day total ${money(day)} (${pc(day/r.b*100,2)} of capital${r.personal?'':', '+lim.toFixed(0)+'% of daily limit'}) · balance after ${fm(r.bal+a)}`;
 }
+const tgtPct=()=>{const v=S.tgt;return v===undefined||v===null||v===''||isNaN(+v)?1:Math.max(0,+v)};
+const tgtTd=x=>`<td>${tgtPct()>0?'<b>'+fm(x.bal*tgtPct()/100)+'</b>':'–'}</td>`;
+function nextDay(last){
+  const wk=d=>[0,6].includes(new Date(d+'T00:00').getDay()),add=(d,n)=>{const t=new Date(d+'T00:00');t.setDate(t.getDate()+n);return iso(t)};
+  let d=add(last,1);while(wk(d))d=add(d,1);
+  const today=iso(new Date());if(d<today){d=today;while(wk(d))d=add(d,1)}
+  return d;
+}
+function targetCard(r){
+  const t=tgtPct();if(!(t>0))return '<div class="note">Set a daily profit target in the Capital tab to see your next day target.</div>';
+  const last=r.log.length?r.log[r.log.length-1].d:iso(new Date()),d=nextDay(last),amt=r.bal*t/100;
+  const dn=new Date(d+'T00:00').toLocaleDateString('en',{weekday:'long',month:'short',day:'numeric'});
+  return `<div class="card"><div class="row"><b>Next day target</b><b class="win" style="font-size:22px">+${fm(amt)}</b></div><div class="muted" style="font-size:13px">${dn} · ${t}% of your ${fm(r.bal)} balance. Finish the day at ${fm(r.bal+amt)} or more.${r.personal?'':` Daily loss limit ${fm(r.dLim)} · breach level ${fm(r.floor)}.`}</div></div>`;
+}
 function dailyLog(){
-  const r=risk();if(!r||!r.log.length)return '';
-  if(r.personal){const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.dd>0?'loss':''}">${x.dd?'−'+x.dd.toFixed(1)+'%':'0%'}</td><td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
-    return `<h2>Daily log</h2><div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Down from peak</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`}
+  const r=risk();if(!r)return '';
+  if(!r.log.length)return `<h2>Daily log</h2>${targetCard(r)}`;
+  if(r.personal){const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.dd>0?'loss':''}">${x.dd?'−'+x.dd.toFixed(1)+'%':'0%'}</td>${tgtTd(x)}<td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
+    return `<h2>Daily log</h2>${targetCard(r)}<div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Down from peak</th><th>Next day target</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`}
   const col=p=>p>=100?'loss':p>=70?'':'win';
-  const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.hit?'loss':col(x.dl)}">${x.dl.toFixed(0)}%${x.hit?' ⚠':''}</td><td class="${x.br?'loss':col(x.od)}">${x.od.toFixed(0)}%${x.br?' ⛔':''}</td><td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
-  return `<h2>Daily log</h2><div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Daily limit used</th><th>Overall limit used</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const rows=[...r.log].reverse().slice(0,31).map(x=>`<tr><td>${x.d}</td><td class="${cls(x.p)}">${money(x.p)}</td><td>${fm(x.bal)}</td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${x.hit?'loss':col(x.dl)}">${x.dl.toFixed(0)}%${x.hit?' ⚠':''}</td><td class="${x.br?'loss':col(x.od)}">${x.od.toFixed(0)}%${x.br?' ⛔':''}</td>${tgtTd(x)}<td>${x.q?`<button data-delday="${x.d}" title="Delete the quick entries for this date" aria-label="Delete entries for ${x.d}">✕</button>`:''}</td></tr>`).join('');
+  return `<h2>Daily log</h2>${targetCard(r)}<div class="card" style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>P&amp;L</th><th>Balance</th><th>Day %</th><th>Daily limit used</th><th>Overall limit used</th><th>Next day target</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 document.addEventListener('submit',e=>{
   if(e.target.id!=='qf')return;e.preventDefault();
@@ -531,7 +546,7 @@ function vActual(){
     <div style="overflow-x:auto"><table class="lg"><thead><tr><th>Date</th><th>Start</th><th>P&amp;L</th><th>End</th><th>Day %</th><th>Total %</th></tr></thead><tbody>${rs.map(x=>`<tr><td><button class="lnkb" data-on="${x.d}" title="Open this day in the calendar">${x.d.slice(5)}</button></td><td>${fm(x.s)}</td><td class="${cls(x.p)}">${money(x.p)}</td><td><b>${fm(x.e)}</b></td><td class="${cls(x.p)}">${pc(x.pct,2)}</td><td class="${cls(x.tot)}">${pc(x.tot,2)}</td></tr>`).join('')}</tbody></table></div></details>`}).join('');
   return `<div class="card"><div class="row"><b>Your results, compounded</b><b class="${cls(net)}" style="font-size:20px">${pc(net/Z.b0*100,2)}</b></div>
   <div class="muted" style="font-size:13px">Built from your calendar. Each day starts with the previous day's ending balance, so wins and losses compound automatically. Days with a loss are included.</div>
-  <div class="stats" style="margin:10px 0 0">${st('Start',fm(Z.b0))}${st('Balance now',fm(Z.end),cls(net))}${st('Trading days',n)}${st('Win days',w.length+' ('+Math.round(w.length/n*100)+'%)','win')}${st('Loss days',l.length+' ('+Math.round(l.length/n*100)+'%)','loss')}${st('Avg win day',w.length?'+'+avg(w).toFixed(2)+'%':'–','win')}${st('Avg loss day',l.length?'−'+avg(l).toFixed(2)+'%':'–','loss')}${st('Avg daily growth',geo===null?'–':pc(geo,2),cls(geo||0))}${st('Best day',money(best.p)+' ('+pc(best.pct,2)+')','win')}${st('Worst day',worst.p<0?money(worst.p)+' ('+pc(worst.pct,2)+')':'–','loss')}</div>
+  <div class="stats" style="margin:10px 0 0">${st('Start',fm(Z.b0))}${st('Balance now',fm(Z.end),cls(net))}${st('Trading days',n)}${st('Win days',w.length+' ('+Math.round(w.length/n*100)+'%)','win')}${st('Loss days',l.length+' ('+Math.round(l.length/n*100)+'%)','loss')}${st('Avg win day',w.length?'+'+avg(w).toFixed(2)+'%':'–','win')}${st('Avg loss day',l.length?'−'+avg(l).toFixed(2)+'%':'–','loss')}${st('Avg daily growth',geo===null?'–':pc(geo,2),cls(geo||0))}${tgtPct()>0?st('Next day target','+'+fm(Z.end*tgtPct()/100)+' ('+tgtPct()+'%)','win'):''}${st('Best day',money(best.p)+' ('+pc(best.pct,2)+')','win')}${st('Worst day',worst.p<0?money(worst.p)+' ('+pc(worst.pct,2)+')':'–','loss')}</div>
   <div class="links"><button data-gu="1">Use my results in the planner</button><button data-gcsv="1">Download sheet (CSV)</button></div></div>${sheets}`;
 }
 function growUpdate(){
@@ -596,6 +611,7 @@ function vCap(){
   <small class="muted">Account category</small><div class="chips" style="margin:2px 0 4px" role="group" aria-label="Account category"><button class="${S.cat!=='micro'?'on':''}" data-ct="standard">Standard account</button><button class="${S.cat==='micro'?'on':''}" data-ct="micro">Micro account</button></div>
   <p class="muted" style="font-size:12px;margin:0 0 6px">${S.cat==='micro'?'Micro (like XM Micro): 1 lot = 1,000 units, about $0.10 per pip on EURUSD per lot.':'Standard: 1 lot = 100,000 units, about $10 per pip on EURUSD per lot.'}</p>
   <label style="margin-top:0">Starting capital in $ (${isProp()?'prop firm account size':'your account'})<input type="number" id="bal" min="0" step="any" inputmode="decimal" value="${S.bal||''}" placeholder="e.g. 100000"></label>
+  <label>Daily profit target (%)<input type="number" id="tg" min="0" step="any" inputmode="decimal" value="${S.tgt??1}"></label>
   ${isProp()?`<div class="two"><label>Daily max loss %<input type="number" id="dl" min="0" step="any" inputmode="decimal" value="${S.dl??5}"></label><label>Overall max loss %<input type="number" id="ol" min="0" step="any" inputmode="decimal" value="${S.ol??10}"></label></div>
   <label>Overall loss type<select id="olt"><option value="static" ${S.olt!=='trailing'?'selected':''}>Static (from starting capital)</option><option value="trailing" ${S.olt==='trailing'?'selected':''}>Trailing (from highest balance)</option></select></label>`:''}</div>
   <div class="card"><b>Log daily result</b>
@@ -762,7 +778,7 @@ function importMT5(){const i=document.createElement('input');i.type='file';i.acc
     if(!r||!r.length){warn='No closed trades found. Export the History tab as a Report (HTML or CSV) with Symbol, Type and Profit columns.'}
     else{const have=new Set(S.trades.map(t=>t.id)),add=r.filter(t=>!have.has(t.id));S.trades.push(...add);add.forEach(t=>{if(S.del)delete S.del[t.id]});save();warn='';alert(`Imported ${add.length} trades (${r.length-add.length} duplicates skipped).`)}
   }catch(x){warn='Could not read that file.'}render()};i.click()}
-document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.value;save();render()}if(['dl','ol'].includes(e.target.id)){S[e.target.id]=Math.max(0,+e.target.value||0);save();render()}if(e.target.id==='olt'){S.olt=e.target.value;save();render()}if(e.target.id==='bal'){S.bal=Math.max(0,+e.target.value||0);save();render()}});
+document.addEventListener('change',e=>{if(e.target.id==='tzSel'){S.tz=e.target.value;save();render()}if(['dl','ol'].includes(e.target.id)){S[e.target.id]=Math.max(0,+e.target.value||0);save();render()}if(e.target.id==='olt'){S.olt=e.target.value;save();render()}if(e.target.id==='tg'){S.tgt=Math.max(0,+e.target.value||0);save();render()}if(e.target.id==='bal'){S.bal=Math.max(0,+e.target.value||0);save();render()}});
 const SB_URL='https://fbmtvcdgdrfmpgstgtns.supabase.co',SB_KEY='sb_publishable_V069cMMupLfikudhqr8PEw_2VToLMte';
 let recovery=false,user=null,sync='',pt,busy=false,again=false,dirty=(()=>{try{return localStorage.getItem('tjd')==='1'}catch(e){return false}})(),sess=null,hashErr='',fromLink=false;
 try{sess=JSON.parse(localStorage.getItem('tjs'))}catch(e){}
