@@ -85,6 +85,11 @@ nav::-webkit-scrollbar{display:none}
 .lnkb{background:none;border:0;color:var(--acc);padding:0 4px;min-height:28px;font:inherit;text-decoration:underline}details.card>summary{cursor:pointer}details.card[open]>summary{margin-bottom:8px}
 .gl2{margin:6px 0 0;padding-left:18px;display:grid;gap:8px;line-height:1.45}
 dialog .row{flex-wrap:wrap;gap:8px}dialog .row>span{display:flex;gap:8px;flex-wrap:wrap}
+.fx{display:grid;gap:6px;margin-top:4px}
+.fxr{display:grid;grid-template-columns:38px 1fr 62px 52px;align-items:center;gap:8px;font-size:14px}
+.fxt{position:relative;height:12px;background:var(--bg);border-radius:6px;overflow:hidden}.fxt:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.fxt i{position:absolute;top:0;bottom:0}.fxp{background:var(--win)}.fxn{background:var(--loss)}
+.fxr span{text-align:right;font-weight:600}.fxr small{font-size:11px}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -189,7 +194,7 @@ const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){gate();
   $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc'],['grow','Grow']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc,grow:vGrow})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc,grow:vGrow})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();maybeFx();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
@@ -637,9 +642,39 @@ function openCap(){
 function vJr(){const l=[...S.trades].sort((a,b)=>b.date.localeCompare(a.date));return stats(S.trades)+syncCard()+`<div class="card"><div class="muted" style="margin-bottom:8px">Your capital and prop firm limits are in the Capital tab.</div>
   <div class="links"><button data-mt5="1">Import MT5 history</button></div>
   <p class="muted" style="margin:0;font-size:13px">In MT5: History tab → right-click → Report → HTML (or CSV), then import that file here. Duplicates are skipped.</p></div>${notesList()}<div class="bar"><h2>All trades</h2><button class="p" data-add="1">Add trade</button></div>`+(l.map(tradeCard).join('')||'<p class="muted">Your journal is empty. Add your first trade.</p>')+`<div class="links"><button data-export="1">Export backup</button><button data-import="1">Import backup</button></div>`}
+let fxd=null,fxw='',fxErr='',fxAt=0,fxBusy=false;
+const FXL={'1h':'1 hour','4h':'4 hours','1d':'1 day','1w':'1 week','1m':'1 month'};
+const FXP=['EURUSD','GBPUSD','AUDUSD','NZDUSD','USDJPY','USDCAD','USDCHF','EURGBP','EURJPY','EURCHF','EURAUD','EURCAD','EURNZD','GBPJPY','GBPCHF','GBPAUD','GBPCAD','GBPNZD','AUDJPY','AUDCHF','AUDCAD','AUDNZD','NZDJPY','NZDCHF','NZDCAD','CADJPY','CADCHF','CHFJPY'];
+function fxPair(strong,weak){const p=FXP.find(x=>x===strong+weak||x===weak+strong);return p?{pair:p,act:p.startsWith(strong)?'Buy':'Sell'}:null}
+async function fetchFx(){
+  if(!user||fxBusy)return;fxBusy=true;
+  try{const r=await api('/functions/v1/fx-strength',{method:'POST',body:'{}'},true);fxd=r;fxErr='';fxAt=Date.now();if(!fxd.windows||!fxd.windows[fxw])fxw=fxd.windows&&fxd.windows['1d']?'1d':Object.keys(fxd.windows||{})[0]||''}
+  catch(x){fxErr=isNet(x)?'Cannot reach the rates service. Check your connection.':x.status===401?'Please sign in again.':(x.message||'Rates are unavailable right now.');fxAt=Date.now()-8*60*1000}
+  fxBusy=false;if(tab==='ch')render();
+}
+function maybeFx(){if(user&&tab==='ch'&&!fxBusy&&Date.now()-fxAt>10*60*1000)fetchFx()}
+function strengthCard(){
+  const head=`<div class="row"><b>Currency strength</b><button data-fxr="1">Refresh</button></div>`;
+  if(!user)return `<div class="card">${head}<p class="muted" style="margin:6px 0 0">Sign in to see which major currencies are strong and weak.</p></div>`;
+  if(!fxd)return `<div class="card">${head}<p class="muted" style="margin:6px 0 0">${fxErr?esc(fxErr):'Loading the latest rates…'}</p></div>`;
+  const ws=Object.keys(fxd.windows||{});if(!ws.length)return `<div class="card">${head}<p class="muted">No data yet.</p></div>`;
+  const w=fxd.windows[fxw]?fxw:ws[0],sc=fxd.windows[w],list=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]),mx=Math.max(...list.map(c=>Math.abs(sc[c])),0.0001);
+  const rows=list.map((c,i)=>{const v=sc[c],pw=Math.abs(v)/mx*50,tag=i<2?'Strong':i>=list.length-2?'Weak':'';
+    return `<div class="fxr"><b>${c}</b><div class="fxt"><i class="${v>=0?'fxp':'fxn'}" style="${v>=0?'left':'right'}:50%;width:${pw.toFixed(1)}%"></i></div><span class="${v>0?'win':v<0?'loss':''}">${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(2)}%</span><small class="muted">${tag}</small></div>`}).join('');
+  const S1=list[0],S2=list[1],W1=list[list.length-1],W2=list[list.length-2];
+  const watch=[[S1,W1],[S1,W2],[S2,W1]].map(([a,b])=>fxPair(a,b)&&{...fxPair(a,b),a,b}).filter(Boolean);
+  const when=new Date(fxd.updated_at).toLocaleString('en',{timeZone:S.tz,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  return `<div class="card">${head}
+  <div class="chips">${ws.map(k=>`<button class="${k===w?'on':''}" data-fxw="${k}">${FXL[k]||k}</button>`).join('')}</div>
+  <div class="fx">${rows}</div>
+  <div class="muted" style="font-size:12px;margin:6px 0 8px">Average move of each currency against the other seven over the last ${FXL[w]||w}. ${fxd.stale?'Showing the last saved update.':''}</div>
+  ${watch.length?`<b style="font-size:14px">Pairs to watch</b><div class="links">${watch.map(x=>`<a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent('FX:'+x.pair)}" target="_blank" rel="noopener">${x.act} ${x.pair}</a>`).join('')}</div><div class="muted" style="font-size:12px">Strongest against weakest. This is context, not a trade signal.</div>`:''}
+  <div class="muted" style="font-size:12px;margin-top:8px">${fxd.source==='twelvedata'?'Hourly prices':'Daily central bank rates'} · data to ${esc(fxd.asOf||'')} · updated ${when} ${tzName()} · refreshes about every hour.${fxd.note?' '+esc(fxd.note):''}${fxErr?' '+esc(fxErr):''}</div>
+  ${fxd.source==='ecb'?`<details style="margin-top:6px"><summary class="muted" style="font-size:13px;cursor:pointer">Get hourly updates</summary><ol class="gl2" style="font-size:13px"><li>Create a free key at twelvedata.com (800 requests a day is included).</li><li>In Supabase open Edge Functions, then Secrets, and add <b>TWELVE_DATA_KEY</b> with your key.</li><li>Tap Refresh here after an hour. The app then shows 1 hour and 4 hour strength.</li></ol></details>`:''}</div>`;
+}
 function vCh(){
   const tv=s=>`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TVS[s]||'FX:'+s)}`;
-  return `<h2>Charts</h2><div class="chips">${PAIRS.map(p=>`<button class="${p===chartSym?'on':''}" data-sym="${p}">${LBL[p]||p}</button>`).join('')}</div>
+  return `<h2>Charts</h2>${strengthCard()}<div class="chips">${PAIRS.map(p=>`<button class="${p===chartSym?'on':''}" data-sym="${p}">${LBL[p]||p}</button>`).join('')}</div>
   <div class="card"><b>${LBL[chartSym]||chartSym}</b><div class="links"><a href="${tv(chartSym)}" target="_blank" rel="noopener">Open in TradingView</a></div>
   <p class="muted">Tip: on a chart, press the camera icon, copy the image link or save the snapshot, then attach it to a trade.</p></div>
   <div class="note">Live TradingView charts can't be embedded inside this hosted page (its security rules block TradingView's script). The button opens the chart in a new tab or the TradingView app. For a fully embedded chart, run this file on your own site, where TradingView's free widget works.</div>`;
@@ -696,7 +731,7 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-ac],[data-ct],[data-gv],[data-gu],[data-gcsv],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-fxr],[data-fxw],[data-ac],[data-ct],[data-gv],[data-gu],[data-gcsv],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
@@ -705,6 +740,8 @@ document.addEventListener('click',e=>{
   else if(D.gv){gv=D.gv}
   else if(D.gu){useActual()}
   else if(D.gcsv){downloadSheet();return}
+  else if(D.fxr){fxAt=0;fetchFx()}
+  else if(D.fxw){fxw=D.fxw}
   else if(D.ac){S.acct=D.ac;save()}
   else if(D.ct){S.cat=D.ct;calcPvManual=false;save()}
   else if(D.hs)return openLogin();
@@ -964,7 +1001,7 @@ function openNewPw(){
     $('#dlg').close();status('Password updated');
   };
 }
-async function signOut(){
+async function signOut(){fxd=null;fxErr='';fxAt=0;
   if(dirty)await push();
   try{await api('/auth/v1/logout',{method:'POST'},true)}catch(e){}
   user=null;sync='';setSess(null);sigs=[];feedKey='';nwv='ev';S={trades:[],events:[],shots:[]};dirty=false;try{localStorage.removeItem('tj1');localStorage.removeItem('tjd')}catch(e){}
@@ -986,6 +1023,7 @@ async function signOut(){
   if(hashErr){openLogin(hashErr);$('#rs').hidden=false}
 })();
 setInterval(()=>{if(user&&!document.hidden)loadSigs()},45000);
+setInterval(()=>{if(user&&!document.hidden&&tab==='ch'&&Date.now()-fxAt>55*60*1000)fetchFx()},60000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push();else if(!document.hidden)loadSigs()});
 addEventListener('pagehide',()=>{if(dirty)push()});
 addEventListener('online',()=>{if(dirty)push()});
