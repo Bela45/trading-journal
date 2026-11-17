@@ -30,8 +30,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .qf{display:grid;grid-template-columns:1fr 1.2fr auto;gap:8px;margin-top:8px}
 .lg{width:100%;border-collapse:collapse;font-size:13px}.lg th,.lg td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}.lg th:first-child,.lg td:first-child{text-align:left}.lg button{min-height:28px;padding:0 8px}
 .pwbox{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;padding:14px 10px;border:2px dashed var(--acc);border-radius:10px;text-align:center;background:var(--bg);user-select:all;word-break:break-all;margin-top:8px}
-nav::-webkit-scrollbar{display:none}nav button{position:relative;white-space:nowrap}nav .bdg{position:absolute;top:4px;right:4px;margin:0;min-width:16px;line-height:16px;font-size:10px}
-.bdg{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:99px;background:var(--loss);color:#fff;font-size:11px;line-height:18px;vertical-align:middle}
+nav::-webkit-scrollbar{display:none}nav button{position:relative;white-space:nowrap}
 pre.code{overflow-x:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;margin:0;white-space:pre}
 .emo{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.emo button{min-height:36px;padding:2px 8px;font-size:18px;line-height:1}
 #tprev img{max-width:100%;border-radius:8px;margin-top:8px;display:block}
@@ -149,7 +148,7 @@ a{color:var(--acc)}.links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
    <li><b>Loss limits</b><span>Set your daily and overall limits. See how much is left and get a warning before you breach.</span></li>
    <li><b>Position calculator</b><span>Lot size for gold, US30 and forex, and how many pips equal 1% of your capital.</span></li>
    <li><b>Growth graph</b><span>Your balance curve, best and worst day, and your biggest drawdown.</span></li>
-   <li><b>News and signals</b><span>High-impact events for the major currencies, and a feed for signals from your automation.</span></li>
+   <li><b>News and events</b><span>High-impact events for the major currencies, shown in your own timezone.</span></li>
    <li><b>On every device</b><span>Sign in on your phone or computer and your journal is already there.</span></li>
   </ul></section>
  <section class="hsec"><h2>Start in three steps</h2>
@@ -197,8 +196,8 @@ const cls=n=>n>0?'win':n<0?'loss':'';
 const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
 
 function render(){gate();
-  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc'],['grow','Grow']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}${k==='nw'?'<span class="bdg" id="nbdg" hidden></span>':''}</button>`).join('');
-  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNw,cap:vCap,calc:vCalc,grow:vGrow})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();paintBadge();maybeFx();
+  $('#nav').innerHTML=[['cal','Calendar'],['jr','Journal'],['ch','Charts'],['nw','News'],['cap','Capital'],['calc','Calc'],['grow','Grow']].map(([k,l])=>`<button class="${tab===k?'on':''}" data-t="${k}">${l}</button>`).join('');
+  $('#view').innerHTML=({cal:vCal,jr:vJr,ch:vCh,nw:vNwEv,cap:vCap,calc:vCalc,grow:vGrow})[tab]()+(warn?`<p class="loss">${warn}</p>`:'');paintAcct();maybeFx();
 }
 const pc=(n,d=1)=>(n>=0?'+':'−')+Math.abs(n).toFixed(d)+'%';
 function stats(list){const w=list.filter(t=>t.pnl>0).length,l=list.filter(t=>t.pnl<0).length,n=list.length,p=sum(list);
@@ -351,62 +350,6 @@ document.addEventListener('submit',e=>{
   render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='qa'||e.target.id==='qd')qPrev()});
-let nwv='ev',sigs=[],feedKey='',fkMsg='';
-const FN=()=>SB_URL+'/functions/v1/ingest-signal';
-const newSig=()=>sigs.filter(x=>x.status==='new').length;
-function paintBadge(){const e=$('#nbdg');if(!e)return;const n=newSig();e.textContent=n;e.hidden=!n}
-async function loadSigs(){
-  if(!user)return;
-  try{const r=await api('/rest/v1/signals?select=*&order=created_at.desc&limit=50',{},true);
-    const key=a=>a.map(x=>x.id+x.status).join();const changed=key(r)!==key(sigs);sigs=r;paintBadge();
-    const t=document.activeElement&&document.activeElement.tagName;
-    if(changed&&tab==='nw'&&nwv==='sg'&&t!=='INPUT'&&t!=='TEXTAREA')render()}catch(x){}
-}
-function sigCard(g){
-  const f=n=>n===null||n===undefined?'–':+n;
-  const risk=Math.abs(g.entry-g.sl),rr=g.entry!=null&&g.sl!=null&&g.tp!=null&&risk>0?(Math.abs(g.tp-g.entry)/risk).toFixed(2):null;
-  const when=new Date(g.created_at).toLocaleString('en',{timeZone:S.tz,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
-  return `<div class="card" style="${g.status==='ignored'?'opacity:.6':''}"><div class="row"><b>${esc(g.pair)} <span class="tag ${g.side==='Buy'?'':'hi'}" style="${g.side==='Buy'?'color:var(--win);border-color:var(--win)':''}">${g.side}</span></b><span class="muted">${when} ${tzName()}</span></div>
-  <div style="margin-top:4px">Entry <b>${f(g.entry)}</b> · SL <b>${f(g.sl)}</b> · TP <b>${f(g.tp)}</b>${rr?` · R:R <b>${rr}</b>`:''}</div>
-  ${g.reason?`<div style="white-space:pre-wrap;margin-top:4px">${esc(g.reason)}</div>`:''}
-  <div class="row" style="margin-top:8px"><span class="tag">${g.status==='new'?'New':g.status==='taken'?'Logged':'Ignored'} · ${esc(g.source)}</span><span><button data-sgt="${g.id}">Log trade</button> <button data-sgi="${g.id}">Ignore</button> <button data-sgd="${g.id}" aria-label="Delete signal">✕</button></span></div></div>`;
-}
-function vSig(){
-  if(!user)return '<div class="note">Sign in to receive signals. They are delivered to your account in the cloud, so they show on all your devices.</div>';
-  const setup=`<div class="card"><div class="row"><b>Connect Grok or any automation</b><button data-fk="1">${feedKey?'New key':'Get feed key'}</button></div>
-  <p class="muted" style="font-size:13px;margin:6px 0 0">Your automation sends each signal to your private feed address. Creating a key replaces your old one, so update the key wherever you use it.</p>
-  ${feedKey?`<div class="pwbox" style="font-size:13px">${esc(feedKey)}</div><div class="links"><button data-cpk="1">Copy key</button></div><p class="muted" style="font-size:13px;margin:0">${esc(fkMsg||'Shown only now. Save it as a secret, for example SIGNAL_FEED_KEY in GitHub.')}</p>
-  <p style="font-size:13px;margin:8px 0 2px">Feed address</p><div class="pwbox" style="font-size:12px;user-select:all">${esc(FN())}</div>
-  <p style="font-size:13px;margin:8px 0 2px">GitHub Actions step</p><pre class="code">- name: Send signals to journal
-  run: |
-    curl -sS -X POST "${esc(FN())}" \\
-      -H "Authorization: Bearer $\{{ secrets.SIGNAL_FEED_KEY }}" \\
-      -H "Content-Type: application/json" \\
-      -d @signals.json</pre>
-  <p style="font-size:13px;margin:8px 0 2px">signals.json</p><pre class="code">[{"pair":"EURUSD","side":"buy","entry":1.0850,"sl":1.0820,"tp":1.0910,"reason":"London sweep"}]</pre>`:''}</div>`;
-  return setup+`<div class="bar"><h2>Signals</h2><button data-sgr="1">Refresh</button></div>`+(sigs.map(sigCard).join('')||'<p class="muted">No signals yet. When your automation sends one, it appears here within a minute.</p>');
-}
-function vNw(){
-  return `<div class="chips"><button class="${nwv==='ev'?'on':''}" data-nv="ev">Events</button><button class="${nwv==='sg'?'on':''}" data-nv="sg">Signals${newSig()?' ('+newSig()+')':''}</button></div>`+(nwv==='sg'?vSig():vNwEv());
-}
-async function makeKey(){
-  if(!(window.crypto&&crypto.subtle)){warn='Creating a feed key needs a secure page (https). Open the app from your Vercel link.';render();return}
-  const r=crypto.getRandomValues(new Uint8Array(24)),key='sf_'+[...r].map(b=>b.toString(16).padStart(2,'0')).join('');
-  const h=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(key)))].map(b=>b.toString(16).padStart(2,'0')).join('');
-  try{await api('/rest/v1/signal_keys?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:user.id,key_hash:h})},true);feedKey=key;fkMsg=''}
-  catch(x){feedKey='';warn='Could not create the key: '+(isNet(x)?'offline':x.message)}
-  render();
-}
-function takeSignal(id){
-  const g=sigs.find(x=>x.id===id);if(!g)return;
-  if(g.status!=='taken'){g.status='taken';api('/rest/v1/signals?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'taken'})},true).catch(()=>{})}
-  sel=loc(new Date().toISOString()).date;openTrade();
-  const ps=$('#pairSel'),known=[...ps.options].some(o=>o.value===g.pair);ps.value=known?g.pair:'OTHER';ps.dispatchEvent(new Event('change'));if(!known)$('#otherLbl input').value=g.pair;
-  $('#tf [name=side]').value=g.side==='Buy'?'Long':'Short';
-  const n=v=>v==null?'':+v;
-  $('#tn').value=`Signal (${g.source}): ${g.side} ${g.pair}`+(g.entry!=null?` @ ${n(g.entry)}`:'')+(g.sl!=null?` SL ${n(g.sl)}`:'')+(g.tp!=null?` TP ${n(g.tp)}`:'')+(g.reason?`\n${g.reason}`:'');
-  paintBadge();
-}
 let calcPvManual=false;
 const INS={
   EURUSD:{g:'Forex',u:'pips',pv:10,n:'Standard lot = 100,000 units. 1 pip = 0.0001, about $10 per pip per lot on USD-quote pairs.'},
@@ -752,7 +695,7 @@ function openEvent(){
 function shrink(file){return new Promise(r=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const s=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);r(c.toDataURL('image/jpeg',.6))};im.onerror=()=>r('');im.src=u})}
 
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-fxr],[data-fxw],[data-ac],[data-ct],[data-gv],[data-gu],[data-gcsv],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-nv],[data-fk],[data-cpk],[data-sgt],[data-sgi],[data-sgd],[data-sgr],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
+  const t=e.target.closest('[data-t],[data-d],[data-m],[data-add],[data-adde],[data-del],[data-dele],[data-sym],[data-c],[data-nfp],[data-close],[data-export],[data-import],[data-shot],[data-delshot],[data-mt5],[data-note],[data-on],[data-hs],[data-hc],[data-fxr],[data-fxw],[data-ac],[data-ct],[data-gv],[data-gu],[data-gcsv],[data-gm],[data-gl],[data-edt],[data-edtr],[data-dti],[data-edshot],[data-addcap],[data-delcap],[data-delday],[data-login],[data-su],[data-so],[data-resend],[data-forgot],[data-chpw],[data-plink]'),img=e.target.closest('[data-z]');
   if(img){const d=$('#dlg');d.innerHTML=`<img src="${img.src}" alt="Screenshot" style="width:100%"><button data-close="1" style="margin-top:8px">Close</button>`;d.showModal();return}
   if(!t)return;const D=t.dataset;
   if(D.t)tab=D.t;
@@ -769,13 +712,6 @@ document.addEventListener('click',e=>{
   else if(D.hc){openLogin();msg('New here? Type your email and tap Create account.',1);return}
   else if(D.gm){grMode=D.gm}
   else if(D.gl){grLim=!grLim}
-  else if(D.nv){nwv=D.nv;if(nwv==='sg')loadSigs()}
-  else if(D.fk)return makeKey();
-  else if(D.cpk){navigator.clipboard.writeText(feedKey).then(()=>{fkMsg='Copied ✓ Save it now, it will not be shown again.';render()}).catch(()=>{fkMsg='Select the key above and copy it.';render()});return}
-  else if(D.sgr){loadSigs();return}
-  else if(D.sgt)return takeSignal(D.sgt);
-  else if(D.sgi){const g=sigs.find(x=>x.id===D.sgi);if(g){g.status='ignored';api('/rest/v1/signals?id=eq.'+g.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'ignored'})},true).catch(()=>{})}}
-  else if(D.sgd){sigs=sigs.filter(x=>x.id!==D.sgd);api('/rest/v1/signals?id=eq.'+D.sgd,{method:'DELETE',headers:{Prefer:'return=minimal'}},true).catch(()=>{})}
   else if(D.edt){const t=S.trades.find(x=>x.id===D.edt);if(t)openEditor(t.img,v=>{t.img=v;save();render()});return}
   else if(D.edshot){const t=S.shots.find(x=>x.id===D.edshot);if(t)openEditor(t.img,v=>{t.img=v;save();render()});return}
   else if(D.addcap)return openCap();
@@ -895,7 +831,6 @@ async function pull(merge){
     try{localStorage.setItem('tj1',JSON.stringify(S))}catch(e){}
     if(merge)await push();else status('Loaded')
   }else await push();
-  loadSigs();
 }
 function openLogin(msg){
   const d=$('#dlg');
@@ -1025,7 +960,7 @@ function openNewPw(){
 async function signOut(){fxd=null;fxErr='';fxAt=0;
   if(dirty)await push();
   try{await api('/auth/v1/logout',{method:'POST'},true)}catch(e){}
-  user=null;sync='';setSess(null);sigs=[];feedKey='';nwv='ev';S={trades:[],events:[],shots:[]};dirty=false;try{localStorage.removeItem('tj1');localStorage.removeItem('tjd')}catch(e){}
+  user=null;sync='';setSess(null);S={trades:[],events:[],shots:[]};dirty=false;try{localStorage.removeItem('tj1');localStorage.removeItem('tjd')}catch(e){}
   load();render();
 }
 (function takeHash(){
@@ -1043,9 +978,8 @@ async function signOut(){fxd=null;fxErr='';fxAt=0;
   booting=false;gate();
   if(hashErr){openLogin(hashErr);$('#rs').hidden=false}
 })();
-setInterval(()=>{if(user&&!document.hidden)loadSigs()},45000);
 setInterval(()=>{if(user&&!document.hidden&&tab==='ch'&&Date.now()-fxAt>55*60*1000)fetchFx()},60000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push();else if(!document.hidden)loadSigs()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)push();});
 addEventListener('pagehide',()=>{if(dirty)push()});
 addEventListener('online',()=>{if(dirty)push()});
 $('#theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'};
