@@ -90,6 +90,10 @@ dialog .row{flex-wrap:wrap;gap:8px}dialog .row>span{display:flex;gap:8px;flex-wr
 .fxt{position:relative;height:12px;background:var(--bg);border-radius:6px;overflow:hidden}.fxt:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
 .fxt i{position:absolute;top:0;bottom:0}.fxp{background:var(--win)}.fxn{background:var(--loss)}
 .fxr span{text-align:right;font-weight:600}.fxr small{font-size:11px}
+.dtab td,.dtab th{text-align:center}.dtab td:first-child,.dtab th:first-child{text-align:left}
+.dch{display:inline-block;padding:2px 7px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.dup{background:var(--winbg);color:var(--win)}.ddn{background:var(--lossbg);color:var(--loss)}.dfl{background:var(--bg);color:var(--mute)}.dn0{color:var(--mute)}
+a.plk{color:var(--acc);font-weight:700;text-decoration:none}
 .bar2{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0 8px}.bar2 i{display:block;height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .day.sel{outline:2px solid var(--acc)}.day.today b{text-decoration:underline}
@@ -673,9 +677,25 @@ function strengthCard(){
   <div class="muted" style="font-size:12px;margin-top:8px">${fxd.source==='twelvedata'?'Hourly prices':'Daily central bank rates'} · data to ${esc(fxd.asOf||'')} · updated ${when} ${tzName()} · refreshes every hour on weekdays.${fxd.note?' '+esc(fxd.note):''}${fxErr?' '+esc(fxErr):''}</div>
   ${fxd.source==='ecb'?`<details style="margin-top:6px"><summary class="muted" style="font-size:13px;cursor:pointer">Get hourly updates</summary><ol class="gl2" style="font-size:13px"><li>Create a free key at twelvedata.com (800 requests a day is included).</li><li>In Supabase open Edge Functions, then Secrets, and add <b>TWELVE_DATA_KEY</b> with your key.</li><li>Tap Refresh here after an hour. The app then shows 1 hour and 4 hour strength.</li></ol></details>`:''}</div>`;
 }
+const DIRP=['EURUSD','GBPUSD','USDJPY','USDCHF','AUDUSD','USDCAD','NZDUSD'],DIRT=[['1h','1H'],['4h','4H'],['1d','D1']];
+function dirChip(x){if(!x)return '<span class="dch dn0">–</span>';const k=x.d;return `<span class="dch ${k==='bull'?'dup':k==='bear'?'ddn':'dfl'}" title="${x.p>0?'+':''}${x.p}% from the 50 average">${k==='bull'?'▲ Bull':k==='bear'?'▼ Bear':'● Flat'}</span>`}
+function directionCard(){
+  const head=`<div class="row"><b>Market direction</b><span class="muted" style="font-size:13px">1H · 4H · D1</span></div>`;
+  if(!user)return `<div class="card">${head}<p class="muted" style="margin:6px 0 0">Sign in to see the trend of the major pairs.</p></div>`;
+  if(!fxd||!fxd.direction)return `<div class="card">${head}<p class="muted" style="margin:6px 0 0">${fxErr?esc(fxErr):'Loading…'}</p></div>`;
+  const D=fxd.direction,hourly=fxd.source==='twelvedata';
+  const rows=DIRP.map(p=>{const v=D[p]||{},ds=DIRT.map(([k])=>v[k]?v[k].d:null).filter(Boolean);
+    const bias=ds.length>=2&&ds.every(x=>x==='bull')?['All bullish','win']:ds.length>=2&&ds.every(x=>x==='bear')?['All bearish','loss']:ds.length?['Mixed','muted']:['',''];
+    return `<tr><td><a class="plk" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent('FX:'+p)}" target="_blank" rel="noopener">${p}</a><div class="${bias[1]}" style="font-size:11px">${bias[0]}</div></td>${DIRT.map(([k])=>`<td>${dirChip(v[k])}</td>`).join('')}</tr>`}).join('');
+  const when=new Date(fxd.updated_at).toLocaleString('en',{timeZone:S.tz,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  return `<div class="card">${head}
+  <div style="overflow-x:auto"><table class="lg dtab"><thead><tr><th>Pair</th>${DIRT.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+  ${hourly?'':'<div class="muted" style="font-size:12px;margin-top:6px">1H and 4H appear once hourly data is on (see Get hourly updates above). D1 comes from daily central bank rates.</div>'}
+  <div class="muted" style="font-size:12px;margin-top:6px">Bull: price and the 20 average are above the 50 average. Bear is the opposite. Flat is anything else. A trend filter, not a forecast. Updated ${when} ${tzName()}, about every hour while the market is open.${fxd.closed?' Market closed, so this is Friday’s close.':''}</div></div>`;
+}
 function vCh(){
   const tv=s=>`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TVS[s]||'FX:'+s)}`;
-  return `<h2>Charts</h2>${strengthCard()}<div class="chips">${PAIRS.map(p=>`<button class="${p===chartSym?'on':''}" data-sym="${p}">${LBL[p]||p}</button>`).join('')}</div>
+  return `<h2>Charts</h2>${strengthCard()}${directionCard()}<div class="chips">${PAIRS.map(p=>`<button class="${p===chartSym?'on':''}" data-sym="${p}">${LBL[p]||p}</button>`).join('')}</div>
   <div class="card"><b>${LBL[chartSym]||chartSym}</b><div class="links"><a href="${tv(chartSym)}" target="_blank" rel="noopener">Open in TradingView</a></div>
   <p class="muted">Tip: on a chart, press the camera icon, copy the image link or save the snapshot, then attach it to a trade.</p></div>
   <div class="note">Live TradingView charts can't be embedded inside this hosted page (its security rules block TradingView's script). The button opens the chart in a new tab or the TradingView app. For a fully embedded chart, run this file on your own site, where TradingView's free widget works.</div>`;
